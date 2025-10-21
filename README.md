@@ -56,7 +56,7 @@ $PSVersionTable.PSVersion
 
 ---
 
-## 📥 Installation
+## Installation
 
 ### Method 1: Download from Releases (Recommended)
 
