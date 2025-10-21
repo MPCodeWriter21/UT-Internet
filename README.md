@@ -62,20 +62,9 @@ $PSVersionTable.PSVersion
 
 Download the latest version from the [Releases page](https://github.com/MPCodeWriter21/UT-Internet/releases/latest):
 
-**Option A - PowerShell Script (.ps1):**
-
-1. Download `login-to-internet.ps1`
-2. Right-click and select "Run with PowerShell"
-
-**Option B - Batch File (.cmd) - Easy Double-Click:**
-
 1. Download `login-to-internet.cmd`
-2. Double-click to run (no right-click needed!)
+2. Double-click to run
 3. Perfect for users unfamiliar with PowerShell
-
-> 💡 **Tip**: Both files are functionally identical. The `.cmd` version is easier to run for beginners.
->
-> 🔒 **Security**: Use `checksums.txt` from the release to verify file integrity.
 
 ### Method 2: Clone Repository
 
@@ -88,21 +77,6 @@ cd UT-Internet
 
 # Run the script
 .\login-to-internet.ps1
-```
-
-### Method 3: Quick Access Setup
-
-Add the script to your PowerShell profile for instant access from anywhere:
-
-```powershell
-# Open your PowerShell profile
-notepad $PROFILE
-
-# Add this line to the profile
-Set-Alias ut-login "C:\Path\To\login-to-internet.ps1"
-
-# Save and reload your profile
-. $PROFILE
 ```
 
 ---
