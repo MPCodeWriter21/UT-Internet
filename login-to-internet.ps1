@@ -76,11 +76,11 @@ function Get-CredentialObject {
         # Check if the $credentialData is an array of two elements
         # Migrate old format to new format
         # Old format: ["username", "securePassword"]
-        # New format: { "default": ["username", "securePassword"], "accounts": [ ["username", "securePassword"], ["username2", "securePassword2"] ] }
+        # New format: { "default": ["username", "securePassword"] or null, "accounts": [ ["username", "securePassword"], ["username2", "securePassword2"] ] }
         if ($credentialObject -is [array] -and $credentialObject.Count -eq 2) {
             Show-Info "Detected old credential format. Migrating to new format..."
             $credentialObject = @{
-                default  = @($credentialObject[0], $credentialObject[1])
+                default  = $null
                 accounts = @(, @($credentialObject[0], $credentialObject[1]))
             }
             $credentialData = ConvertTo-Json $credentialObject
@@ -131,18 +131,27 @@ function Show-AccountList {
 
     Show-Info "Saved accounts:"
     $index = 1
-    foreach ($account in $credentialObject.accounts) {
-        $username = $account[0]
-        $isDefault = ($username -eq $credentialObject.default[0])
-        if ($isDefault -and $showDefaultIndicator) {
-            Write-Host -NoNewLine -ForegroundColor Cyan " [$index] "
-            Write-Host -NoNewLine -ForegroundColor Green "$username"
-            Write-Host -ForegroundColor Yellow " (default)"
+    if ($showDefaultIndicator -and $credentialObject.default) {
+        foreach ($account in $credentialObject.accounts) {
+            $username = $account[0]
+            $isDefault = ($username -eq $credentialObject.default[0])
+            if ($isDefault) {
+                Write-Host -NoNewLine -ForegroundColor Cyan " [$index] "
+                Write-Host -NoNewLine -ForegroundColor Green "$username"
+                Write-Host -ForegroundColor Yellow " (default)"
+            }
+            else {
+                Write-Host -ForegroundColor Cyan " [$index] $username"
+            }
+            $index++
         }
-        else {
+    }
+    else {
+        foreach ($account in $credentialObject.accounts) {
+            $username = $account[0]
             Write-Host -ForegroundColor Cyan " [$index] $username"
+            $index++
         }
-        $index++
     }
 }
 
@@ -233,7 +242,7 @@ if ($help) {
     Show-Info "  -reset              Reset saved credentials."
     Show-Info "  -noSave             Do not save credentials."
     Show-Info "  -addAccount         Add another account."
-    Show-Info "  -chooseDefault      Choose default account from the added accounts."
+    Show-Info "  -chooseDefault      Set or unset default account"
     Show-Info "  -chooseAccount      Choose an account from the added accounts. (Keeps the default unchanged)"
     Show-Info "  -noRemainingTraffic Do not show remaining traffic."
     Show-Info "  -help               Show this help message."
@@ -242,7 +251,7 @@ if ($help) {
 }
 
 if ($version) {
-    Show-Info "Version: 1.1.0"
+    Show-Info "Version: 1.2.0"
     exit 0
 }
 
@@ -292,24 +301,50 @@ if ($chooseDefault) {
 
     Write-Host
     Show-AccountList -credentialObject $credentialObject -showDefaultIndicator $true
+    Write-Host -ForegroundColor Cyan " [0] None (prompt for account selection on each login)"
 
     Write-Host
-    $selectedAccount = Get-AccountSelection -credentialObject $credentialObject -prompt " [?] Enter the number of the account to set as default"
+    $choice = Read-Host -Prompt " [?] Enter the number of the account to set as default (or 0 for none)"
 
-    if ($selectedAccount) {
-        $credentialObject.default = $selectedAccount
+    try {
+        $choiceNum = [int]$choice
 
-        if (Save-CredentialObject -credentialObject $credentialObject -filePath $credentialFilePath) {
-            Show-Success "Default account set to: $($selectedAccount[0])"
-            pause
-            exit 0
+        if ($choiceNum -eq 0) {
+            # Set default to null - user will be prompted each time
+            $credentialObject.default = $null
+
+            if (Save-CredentialObject -credentialObject $credentialObject -filePath $credentialFilePath) {
+                Show-Success "Default account cleared. You will be prompted to choose an account on each login."
+                pause
+                exit 0
+            }
+            else {
+                pause
+                exit 1
+            }
         }
-        else {
+        elseif ($choiceNum -lt 1 -or $choiceNum -gt $credentialObject.accounts.Count) {
+            Show-Error "Invalid choice. Please enter a number between 0 and $($credentialObject.accounts.Count)."
             pause
             exit 1
         }
+        else {
+            $selectedAccount = $credentialObject.accounts[$choiceNum - 1]
+            $credentialObject.default = $selectedAccount
+
+            if (Save-CredentialObject -credentialObject $credentialObject -filePath $credentialFilePath) {
+                Show-Success "Default account set to: $($selectedAccount[0])"
+                pause
+                exit 0
+            }
+            else {
+                pause
+                exit 1
+            }
+        }
     }
-    else {
+    catch {
+        Show-Error "Invalid input. Please enter a valid number."
         pause
         exit 1
     }
@@ -420,9 +455,6 @@ function Get-Magic {
         # Check if the user is already logged in
         if ($magicResponse.Content -match '<a href="https://internet.ut.ac.ir:1003/logout\?">') {
             Show-Success "You seem to be logged in already..."
-            if (-not $noRemainingTraffic) {
-                Show-Remaining-Traffic
-            }
             $title = " [!] Wanna logout?"
             $question = " [?] Do you want to log out?"
             $choices = "&Yes", "&No"
@@ -458,6 +490,8 @@ function Get-Magic {
 
 Write-Host
 
+$magicValue = Get-Magic
+
 if ($credentialObject) {
     try {
         Show-Success "Found saved credentials."
@@ -466,14 +500,44 @@ if ($credentialObject) {
 
         # If chooseAccount flag is not set, use default account
         if (-not $chooseAccount) {
-            [string]$UT_USERNAME = $credentialObject.default[0]
-            [SecureString]$SECURE_UT_PASSWORD = $credentialObject.default[1] | ConvertTo-SecureString -ErrorAction Stop
-            $UT_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SECURE_UT_PASSWORD))
-            $savedCredentials = $true
+            # If default is null and multiple accounts exist, prompt user
+            if ($null -eq $credentialObject.default -and $credentialObject.accounts.Count -gt 1) {
+                Write-Host
+                Show-Info "No default account set. Please choose an account:"
+                Show-Info "Tip: Use '-chooseDefault' flag to set a default account and skip this prompt."
+                Write-Host
+                Show-AccountList -credentialObject $credentialObject -showDefaultIndicator $false
+                Write-Host
+                $selectedAccount = Get-AccountSelection -credentialObject $credentialObject -prompt " [?] Enter the number of the account to use"
+
+                if ($selectedAccount) {
+                    [string]$UT_USERNAME = $selectedAccount[0]
+                    [SecureString]$SECURE_UT_PASSWORD = $selectedAccount[1] | ConvertTo-SecureString -ErrorAction Stop
+                    $UT_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SECURE_UT_PASSWORD))
+                    $savedCredentials = $true
+                }
+            }
+            # If only one account exists, use it automatically
+            elseif ($credentialObject.accounts.Count -eq 1) {
+                [string]$UT_USERNAME = $credentialObject.accounts[0][0]
+                [SecureString]$SECURE_UT_PASSWORD = $credentialObject.accounts[0][1] | ConvertTo-SecureString -ErrorAction Stop
+                $UT_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SECURE_UT_PASSWORD))
+                $savedCredentials = $true
+            }
+            # Use default account
+            elseif ($credentialObject.default) {
+                Write-Host
+                Show-Info "Using default account: $($credentialObject.default[0])"
+                Show-Info "Use '-chooseDefault' flag to change the default account."
+                [string]$UT_USERNAME = $credentialObject.default[0]
+                [SecureString]$SECURE_UT_PASSWORD = $credentialObject.default[1] | ConvertTo-SecureString -ErrorAction Stop
+                $UT_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SECURE_UT_PASSWORD))
+                $savedCredentials = $true
+            }
         }
     }
     catch {
-        Show-Error "Failed to use the saved credentials."
+        Show-Error "Failed to use the saved credentials. $_"
     }
 }
 
@@ -618,7 +682,7 @@ function Login-Device {
     $data = @{
         username  = $UT_USERNAME
         password  = $UT_PASSWORD
-        magic     = Get-Magic
+        magic     = $magicValue
         '4Tredir' = 'https://internet.ut.ac.ir:1003/portal?'
     }
 

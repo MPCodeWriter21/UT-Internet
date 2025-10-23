@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.1.0-orange.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.2.0-orange.svg)](https://github.com)
 [![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
 
@@ -102,7 +102,7 @@ credentials are saved securely for future use.
 | `-reset`              | Reset saved credentials and prompt for new ones              |
 | `-noSave`             | Don't save credentials (prompt every time)                   |
 | `-addAccount`         | Add a new account to saved credentials                       |
-| `-chooseDefault`      | Set the default account from saved accounts                  |
+| `-chooseDefault`      | Set or unset the default account                             |
 | `-chooseAccount`      | Select an account for this session (keeps default unchanged) |
 | `-noRemainingTraffic` | Skip displaying remaining traffic quota                      |
 | `-help`               | Display help message with usage information                  |
@@ -346,7 +346,26 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.1.0 (Latest)
+### Version 1.2.0 (Latest)
+
+**Flexible Default Account Release**
+
+- **Null default option** - Set default to "None" to be prompted on each login
+- **Auto-select single account** - Single account users never prompted
+- **Smart migration** - Automatically migrates v1.1.0 multi-account users to null default
+- **Improved UX** - Helpful tips and prompts for multi-account management
+
+**Enhanced Flags:**
+
+- `-chooseDefault` now supports "None" option (option 0)
+
+**Behavior:**
+
+- Multi-account users with null default: Prompted to choose account each time
+- Single account users: Automatically selected without prompting
+- Multi-account users with set default: Use default account automatically
+
+### Version 1.1.0
 
 **Multi-Account Support Release**
 

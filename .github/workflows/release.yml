@@ -146,7 +146,7 @@ jobs:
           | `-reset` | Reset saved credentials |
           | `-noSave` | Don't save credentials |
           | `-addAccount` | Add a new account |
-          | `-chooseDefault` | Set default account |
+          | `-chooseDefault` | Set default account (or "None" to prompt each time) |
           | `-chooseAccount` | Choose account for this session |
           | `-noRemainingTraffic` | Skip traffic display |
           | `-help` | Show help message |
