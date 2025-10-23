@@ -1,5 +1,6 @@
 # ==================================================================================== #
 #                      Copyright (c) 2024-2025 Mehrad Pooryoussof                      #
+#                        github.com/MPCodeWriter21/UT-Internet                         #
 # ==================================================================================== #
 # - What is this script?                                                               #
 # + This script is a PowerShell script that logs you into the UT network.              #
@@ -35,6 +36,7 @@ param (
 
 Write-Host -ForegroundColor Yellow "=========================================================================="
 Write-Host -ForegroundColor White  "        Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof         "
+Write-Host -ForegroundColor White  "                  github.com/MPCodeWriter21/UT-Internet                   "
 Write-Host -ForegroundColor Yellow "=========================================================================="
 Write-Host -ForegroundColor White
 
@@ -251,7 +253,7 @@ if ($help) {
 }
 
 if ($version) {
-    Show-Info "Version: 1.2.0"
+    Show-Info "Version: 1.2.1"
     exit 0
 }
 
@@ -299,7 +301,6 @@ if ($chooseDefault) {
         exit 0
     }
 
-    Write-Host
     Show-AccountList -credentialObject $credentialObject -showDefaultIndicator $true
     Write-Host -ForegroundColor Cyan " [0] None (prompt for account selection on each login)"
 
@@ -363,7 +364,6 @@ if ($chooseAccount) {
         $selectedAccount = $credentialObject.accounts[0]
     }
     else {
-        Write-Host
         Show-AccountList -credentialObject $credentialObject -showDefaultIndicator $true
 
         Write-Host
@@ -487,8 +487,6 @@ function Get-Magic {
     Show-Success "Magic: $magic"
     return $magic
 }
-
-Write-Host
 
 $magicValue = Get-Magic
 
@@ -695,7 +693,6 @@ function Login-Device {
     if ($response.Content -match 'window.location="https://internet.ut.ac.ir:1003/portal\?.*";') {
         Show-Success "Successfully logged in!"
         if (-not $noRemainingTraffic) {
-            Write-Host
             Show-Remaining-Traffic
         }
     }
