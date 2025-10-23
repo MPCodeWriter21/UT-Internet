@@ -162,12 +162,12 @@ jobs:
           ---
           
           **Verify Downloads:**
-          Use the checksums in \`checksums.txt\` to verify file integrity:
-          \`\`\`powershell
+          Use the checksums in `checksums.txt` to verify file integrity:
+          ```powershell
           # PowerShell verification
           Get-FileHash login-to-internet.ps1 -Algorithm SHA256
           Get-FileHash login-to-internet.cmd -Algorithm SHA256
-          \`\`\`
+          ```
           EOF
           
           echo "Release notes generated successfully"
