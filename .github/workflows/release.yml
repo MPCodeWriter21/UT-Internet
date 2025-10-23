@@ -15,17 +15,17 @@ on:
 
 permissions:
   contents: write
-  
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Extract version from script
         id: extract_version
         run: |
@@ -33,35 +33,35 @@ jobs:
           VERSION=$(grep -oP 'Show-Info "Version: \K[^"]+' login-to-internet.ps1 || echo "1.0.0")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-          
+
           # Generate build number based on commit count
           BUILD_NUMBER=$(git rev-list --count HEAD)
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
-          
+
           # Get short commit SHA
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          
+
           echo "Extracted version: $VERSION"
           echo "Build number: $BUILD_NUMBER"
           echo "Commit SHA: $SHORT_SHA"
-      
+
       - name: Generate login-to-internet.cmd
         run: |
           echo "Generating login-to-internet.cmd from login-to-internet.ps1..."
-          
+
           # Create the .cmd file with the batch wrapper
           cat > login-to-internet.cmd << 'EOF'
           @echo off
           PowerShell -Command "Set-ExecutionPolicy -Scope CurrentUser RemoteSigned;$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ((New-Guid).ToString('N') + '.ps1'); Get-Content '%~dpnx0' | Select-Object -Skip 3 | Out-String > $tmp; Invoke-Expression '& \"$tmp\" %*'; Remove-Item $tmp"
           goto :eof
           EOF
-          
+
           # Append the PowerShell script content
           cat login-to-internet.ps1 >> login-to-internet.cmd
-          
+
           echo "Successfully generated login-to-internet.cmd"
-          
+
           # Verify file was created
           if [ -f login-to-internet.cmd ]; then
             echo "✓ login-to-internet.cmd created successfully"
@@ -70,53 +70,53 @@ jobs:
             echo "✗ Failed to create login-to-internet.cmd"
             exit 1
           fi
-      
+
       - name: Create checksums
         run: |
           echo "Generating checksums..."
           sha256sum login-to-internet.ps1 > checksums.txt
           sha256sum login-to-internet.cmd >> checksums.txt
-          
+
           echo "Checksums generated:"
           cat checksums.txt
-      
+
       - name: Generate release notes
         id: release_notes
         run: |
           # Get the last tag
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
+
           # Generate release notes
           cat > release_notes.md << EOF
           ## 🎉 UT Internet Login Script - Version ${{ steps.extract_version.outputs.version }}
-          
+
           ### 📦 Release Information
           - **Version**: ${{ steps.extract_version.outputs.version }}
           - **Build**: #${{ steps.extract_version.outputs.build_number }}
           - **Commit**: \`${{ steps.extract_version.outputs.short_sha }}\`
           - **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          
+
           ### 📥 Downloads
           This release includes:
           - \`login-to-internet.ps1\` - PowerShell script (recommended)
           - \`login-to-internet.cmd\` - Batch wrapper for easy double-click execution
           - \`checksums.txt\` - SHA256 checksums for verification
-          
+
           ### 🚀 Quick Start
-          
+
           **Using PowerShell Script (.ps1):**
           \`\`\`powershell
           # Download and run
           .\login-to-internet.ps1
           \`\`\`
-          
+
           **Using Batch File (.cmd):**
           - Simply double-click \`login-to-internet.cmd\`
           - Or run from Command Prompt: \`login-to-internet.cmd\`
-          
+
           ### 📝 What's Changed
           EOF
-          
+
           # Add commit messages since last tag
           if [ -n "$LAST_TAG" ]; then
             echo "" >> release_notes.md
@@ -127,40 +127,44 @@ jobs:
             echo "#### Recent Commits:" >> release_notes.md
             git log -5 --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
           fi
-          
+
           # Add usage information
           cat >> release_notes.md << 'EOF'
-          
+
           ### ⚙️ Features
           - 🔐 Secure credential management with encrypted storage
           - 🔄 Automatic session detection
+          - 👥 Multi-account support - manage multiple UT accounts
           - 🚪 Easy logout functionality
           - 📊 Traffic quota monitoring
           - 🔌 Multi-session disconnect capability
           - 🎨 Colorful, user-friendly interface
-          
+
           ### 💡 Command-Line Options
           | Flag | Description |
           |------|-------------|
           | `-reset` | Reset saved credentials |
           | `-noSave` | Don't save credentials |
+          | `-addAccount` | Add a new account |
+          | `-chooseDefault` | Set default account |
+          | `-chooseAccount` | Choose account for this session |
           | `-noRemainingTraffic` | Skip traffic display |
           | `-help` | Show help message |
           | `-version` | Show version |
-          
+
           ### 🔒 Security
           - Credentials are encrypted using Windows DPAPI
           - Only your user account can decrypt stored credentials
           - Credentials stored in hidden system file
-          
+
           ### 📚 Documentation
           For detailed documentation, see [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
-          
+
           ### 🐛 Issues & Support
           Found a bug or need help? [Open an issue](https://github.com/${{ github.repository }}/issues)
-          
+
           ---
-          
+
           **Verify Downloads:**
           Use the checksums in `checksums.txt` to verify file integrity:
           ```powershell
@@ -169,9 +173,9 @@ jobs:
           Get-FileHash login-to-internet.cmd -Algorithm SHA256
           ```
           EOF
-          
+
           echo "Release notes generated successfully"
-      
+
       - name: Check if tag exists
         id: check_tag
         run: |
@@ -184,73 +188,73 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
             echo "✓ Tag $TAG is new"
           fi
-      
+
       - name: Create and push tag
         run: |
           TAG="${{ steps.extract_version.outputs.tag }}"
-          
+
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Create tag
           git tag -a "$TAG" -m "Release $TAG - Build #${{ steps.extract_version.outputs.build_number }}"
-          
+
           # Push tag
           git push origin "$TAG"
-          
+
           echo "✓ Tag $TAG created and pushed"
-      
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.extract_version.outputs.tag }}"
           VERSION="${{ steps.extract_version.outputs.version }}"
-          
+
           echo "Creating release $TAG..."
-          
+
           gh release create "$TAG" \
             --title "UT Internet Login Script v$VERSION" \
             --notes-file release_notes.md \
             login-to-internet.ps1 \
             login-to-internet.cmd \
             checksums.txt
-          
+
           echo "✓ Release $TAG created successfully"
-      
+
       - name: Update latest release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.extract_version.outputs.tag }}"
-          
+
           # Mark as latest release
           gh release edit "$TAG" --latest
-          
+
           echo "✓ Release $TAG marked as latest"
-      
+
       - name: Release summary
         run: |
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## 🎉 Release Created Successfully!
-          
+
           ### Release Details
           - **Tag**: ${{ steps.extract_version.outputs.tag }}
           - **Version**: ${{ steps.extract_version.outputs.version }}
           - **Build**: #${{ steps.extract_version.outputs.build_number }}
           - **Commit**: \`${{ steps.extract_version.outputs.short_sha }}\`
-          
+
           ### 📦 Released Files
           - ✅ login-to-internet.ps1
           - ✅ login-to-internet.cmd
           - ✅ checksums.txt
-          
+
           ### 🔗 Links
           - [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.extract_version.outputs.tag }})
           - [Download Files](https://github.com/${{ github.repository }}/releases/latest)
-          
+
           ---
-          
+
           **Note**: The .cmd file was automatically generated from the .ps1 file with batch wrapper for easy execution.
           EOF

@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.1.0-orange.svg)](https://github.com)
 [![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
 
@@ -16,6 +16,7 @@ credential management, session control, and traffic monitoring.
 
 - 🔐 **Secure Credential Management**: Save your credentials securely for future use
 - 🔄 **Smart Session Detection**: Automatically detects if you're already logged in
+- 👥 **Multi-Account Support**: Add and manage multiple UT accounts
 - 🚪 **Session Management**: Log out from active sessions with ease
 - 📊 **Traffic Monitoring**: View your remaining internet traffic quota
 - 🔌 **Multi-Session Handling**: Disconnect other active sessions when needed
@@ -96,13 +97,16 @@ credentials are saved securely for future use.
 
 ### Command-Line Options
 
-| Flag                  | Description                                     |
-| --------------------- | ----------------------------------------------- |
-| `-reset`              | Reset saved credentials and prompt for new ones |
-| `-noSave`             | Don't save credentials (prompt every time)      |
-| `-noRemainingTraffic` | Skip displaying remaining traffic quota         |
-| `-help`               | Display help message with usage information     |
-| `-version`            | Display script version                          |
+| Flag                  | Description                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `-reset`              | Reset saved credentials and prompt for new ones              |
+| `-noSave`             | Don't save credentials (prompt every time)                   |
+| `-addAccount`         | Add a new account to saved credentials                       |
+| `-chooseDefault`      | Set the default account from saved accounts                  |
+| `-chooseAccount`      | Select an account for this session (keeps default unchanged) |
+| `-noRemainingTraffic` | Skip displaying remaining traffic quota                      |
+| `-help`               | Display help message with usage information                  |
+| `-version`            | Display script version                                       |
 
 ---
 
@@ -307,7 +311,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
 ### PowerShell Resources
 
@@ -321,8 +325,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Future enhancements planned:
 
+- [x] Multiple account support (Added in v1.1.0)
 - [ ] Automatic login on network connection
-- [ ] Multiple account support
+- [ ] Traffic usage statistics and history
+- [ ] Scheduled auto-login
 - [ ] Cross-platform support (Linux/macOS)
 
 ---
@@ -340,17 +346,33 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.0.0 (2024-2025)
+### Version 1.1.0 (Latest)
+
+**Multi-Account Support Release**
+
+- **Multi-account management** - Add and manage multiple UT accounts
+- **Default account selection** - Set your preferred default account
+- **Per-session account choice** - Use different accounts without changing default
+- **Automatic migration** - Seamlessly updates old credential format
+- **Account password updates** - Update passwords for existing accounts
+
+**New Flags:**
+
+- `-addAccount` - Add a new account
+- `-chooseDefault` - Set default account
+- `-chooseAccount` - Choose account for current session
+
+### Version 1.0.0
 
 **Initial Public Release**
 
-- ✅ Basic login functionality
-- ✅ Credential management
-- ✅ Session detection and management
-- ✅ Traffic monitoring
-- ✅ Multi-session handling
-- ✅ Colorful user interface
-- ✅ Command-line options
+- Basic login functionality
+- Credential management
+- Session detection and management
+- Traffic monitoring
+- Multi-session handling
+- Colorful user interface
+- Command-line options
 
 ---
 

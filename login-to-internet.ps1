@@ -8,6 +8,8 @@
 # + It can save your credentials for future use.                                       #
 # + You can reset your saved credentials.                                              #
 # + You can choose not to save your credentials.                                       #
+# + You can add multiple accounts.                                                     #
+# + You can choose the default account or another account to log in with.              #
 # + It can detect if you are already logged in.                                        #
 # + It can log you out if you are already logged in.                                   #
 # + It can show your remaining traffic.                                                #
@@ -23,6 +25,9 @@
 param (
     [switch]$reset = $false,
     [switch]$noSave = $false,
+    [switch]$addAccount = $false,
+    [switch]$chooseDefault = $false,
+    [switch]$chooseAccount = $false,
     [switch]$noRemainingTraffic = $false,
     [switch]$help = $false,
     [switch]$version = $false
@@ -54,6 +59,172 @@ function Show-Success {
     Write-Host -ForegroundColor White "$args"
 }
 
+function Get-CredentialObject {
+    param (
+        [string]$credentialFilePath
+    )
+
+    [string]$credentialData = Get-Content -ErrorAction SilentlyContinue $credentialFilePath
+
+    if (-not $credentialData) {
+        return $null
+    }
+
+    try {
+        $credentialObject = ConvertFrom-Json $credentialData
+
+        # Check if the $credentialData is an array of two elements
+        # Migrate old format to new format
+        # Old format: ["username", "securePassword"]
+        # New format: { "default": ["username", "securePassword"], "accounts": [ ["username", "securePassword"], ["username2", "securePassword2"] ] }
+        if ($credentialObject -is [array] -and $credentialObject.Count -eq 2) {
+            Show-Info "Detected old credential format. Migrating to new format..."
+            $credentialObject = @{
+                default  = @($credentialObject[0], $credentialObject[1])
+                accounts = @(, @($credentialObject[0], $credentialObject[1]))
+            }
+            $credentialData = ConvertTo-Json $credentialObject
+            $credentialData | Set-Content -Path $credentialFilePath
+        }
+
+        return $credentialObject
+    }
+    catch {
+        Show-Error "Failed to parse credential data."
+        return $null
+    }
+}
+
+function Save-CredentialObject {
+    param (
+        [Parameter(Mandatory = $true)]
+        $credentialObject,
+
+        [Parameter(Mandatory = $true)]
+        [string]$filePath
+    )
+
+    try {
+        $credentialData = $credentialObject | ConvertTo-Json
+        $credentialData | Set-Content -Path $filePath
+
+        $credentialFile = Get-ChildItem -Force $filePath
+        $credentialFile.Attributes = $credentialFile.Attributes -bor [System.IO.FileAttributes]::Hidden
+        $credentialFile.Attributes = $credentialFile.Attributes -bor [System.IO.FileAttributes]::System
+        $credentialFile.Attributes = $credentialFile.Attributes -band (-bnot [System.IO.FileAttributes]::Archive)
+
+        return $true
+    }
+    catch {
+        Show-Error "Failed to save credentials: $_"
+        return $false
+    }
+}
+
+function Show-AccountList {
+    param (
+        [Parameter(Mandatory = $true)]
+        $credentialObject,
+
+        [bool]$showDefaultIndicator = $true
+    )
+
+    Show-Info "Saved accounts:"
+    $index = 1
+    foreach ($account in $credentialObject.accounts) {
+        $username = $account[0]
+        $isDefault = ($username -eq $credentialObject.default[0])
+        if ($isDefault -and $showDefaultIndicator) {
+            Write-Host -NoNewLine -ForegroundColor Cyan " [$index] "
+            Write-Host -NoNewLine -ForegroundColor Green "$username"
+            Write-Host -ForegroundColor Yellow " (default)"
+        }
+        else {
+            Write-Host -ForegroundColor Cyan " [$index] $username"
+        }
+        $index++
+    }
+}
+
+function Get-AccountSelection {
+    param (
+        [Parameter(Mandatory = $true)]
+        $credentialObject,
+
+        [Parameter(Mandatory = $true)]
+        [string]$prompt
+    )
+
+    $choice = Read-Host -Prompt $prompt
+
+    try {
+        $choiceNum = [int]$choice
+        if ($choiceNum -lt 1 -or $choiceNum -gt $credentialObject.accounts.Count) {
+            Show-Error "Invalid choice. Please enter a number between 1 and $($credentialObject.accounts.Count)."
+            return $null
+        }
+
+        return $credentialObject.accounts[$choiceNum - 1]
+    }
+    catch {
+        Show-Error "Invalid input. Please enter a valid number."
+        return $null
+    }
+}
+
+function Add-NewAccount {
+    param (
+        [Parameter(Mandatory = $true)]
+        $credentialObject,
+
+        [Parameter(Mandatory = $true)]
+        [string]$filePath
+    )
+
+    Write-Host
+    Show-Info "Adding a new account..."
+    $newUsername = Read-Host -Prompt " [?] Please enter the new username"
+    $newPassword = Read-Host -Prompt " [?] Please enter the new password" -AsSecureString
+    $newPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($newPassword))
+    $newSecurePassword = $newPasswordPlain | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString
+
+    # Check if account already exists
+    $accountExists = $false
+    foreach ($account in $credentialObject.accounts) {
+        if ($account[0] -eq $newUsername) {
+            $accountExists = $true
+            Show-Error "Account '$newUsername' already exists!"
+            $title = " [!] Update existing account?"
+            $question = " [?] Do you want to update the password for this account?"
+            $choices = "&Yes", "&No"
+
+            $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+            if ($decision -eq 0) {
+                $account[1] = $newSecurePassword
+                Show-Success "Password updated for account '$newUsername'."
+            }
+            else {
+                return $false
+            }
+            break
+        }
+    }
+
+    if (-not $accountExists) {
+        $credentialObject.accounts += , @($newUsername, $newSecurePassword)
+        Show-Success "Account '$newUsername' added successfully!"
+    }
+
+    # Save updated credentials
+    if (Save-CredentialObject -credentialObject $credentialObject -filePath $filePath) {
+        Show-Success "Credentials saved."
+        return $true
+    }
+    else {
+        return $false
+    }
+}
+
 if ($help) {
     Show-Info "This script logs you into the UT network."
     Write-Host
@@ -61,6 +232,9 @@ if ($help) {
     Show-Info "Options:"
     Show-Info "  -reset              Reset saved credentials."
     Show-Info "  -noSave             Do not save credentials."
+    Show-Info "  -addAccount         Add another account."
+    Show-Info "  -chooseDefault      Choose default account from the added accounts."
+    Show-Info "  -chooseAccount      Choose an account from the added accounts. (Keeps the default unchanged)"
     Show-Info "  -noRemainingTraffic Do not show remaining traffic."
     Show-Info "  -help               Show this help message."
     Show-Info "  -version            Show the version of the script."
@@ -68,8 +242,112 @@ if ($help) {
 }
 
 if ($version) {
-    Show-Info "Version: 1.0.0"
+    Show-Info "Version: 1.1.0"
     exit 0
+}
+
+$savedCredentials = $false
+$credentialFilePath = "$HOME\.ut.net.creds"
+
+if ($reset) {
+    Remove-Item -Path $credentialFilePath -Force -ErrorAction SilentlyContinue
+    Show-Success "Saved credentials have been reset."
+}
+
+$credentialObject = Get-CredentialObject -credentialFilePath $credentialFilePath
+
+# Handle -addAccount flag
+if ($addAccount) {
+    if (-not $credentialObject) {
+        Show-Info "No saved credentials found. The -addAccount flag will be ignored."
+        Show-Info "Please complete the initial login first, then use -addAccount to add more accounts."
+        Write-Host
+        # Don't exit - let the user continue with normal login
+    }
+    else {
+        if (Add-NewAccount -credentialObject $credentialObject -filePath $credentialFilePath) {
+            pause
+            exit 0
+        }
+        else {
+            pause
+            exit 1
+        }
+    }
+}
+
+# Handle -chooseDefault flag
+if ($chooseDefault) {
+    if (-not $credentialObject) {
+        Show-Error "No saved credentials found. Please run the script without flags first to save credentials."
+        pause
+        exit 1
+    }
+
+    if ($credentialObject.accounts.Count -eq 1) {
+        Show-Info "Only one account saved. No need to choose."
+        pause
+        exit 0
+    }
+
+    Write-Host
+    Show-AccountList -credentialObject $credentialObject -showDefaultIndicator $true
+
+    Write-Host
+    $selectedAccount = Get-AccountSelection -credentialObject $credentialObject -prompt " [?] Enter the number of the account to set as default"
+
+    if ($selectedAccount) {
+        $credentialObject.default = $selectedAccount
+
+        if (Save-CredentialObject -credentialObject $credentialObject -filePath $credentialFilePath) {
+            Show-Success "Default account set to: $($selectedAccount[0])"
+            pause
+            exit 0
+        }
+        else {
+            pause
+            exit 1
+        }
+    }
+    else {
+        pause
+        exit 1
+    }
+}
+
+# Handle -chooseAccount flag
+if ($chooseAccount) {
+    if (-not $credentialObject) {
+        Show-Error "No saved credentials found. Please run the script without flags first to save credentials."
+        pause
+        exit 1
+    }
+
+    if ($credentialObject.accounts.Count -eq 1) {
+        Show-Info "Only one account saved. Using it for login."
+        $selectedAccount = $credentialObject.accounts[0]
+    }
+    else {
+        Write-Host
+        Show-AccountList -credentialObject $credentialObject -showDefaultIndicator $true
+
+        Write-Host
+        $selectedAccount = Get-AccountSelection -credentialObject $credentialObject -prompt " [?] Enter the number of the account to use for login"
+
+        if (-not $selectedAccount) {
+            pause
+            exit 1
+        }
+    }
+
+    # Use selected account for this session
+    [string]$UT_USERNAME = $selectedAccount[0]
+    [SecureString]$SECURE_UT_PASSWORD = $selectedAccount[1] | ConvertTo-SecureString -ErrorAction Stop
+    $UT_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SECURE_UT_PASSWORD))
+    $savedCredentials = $true
+
+    Show-Success "Using account: $UT_USERNAME"
+    # Continue with login process - don't exit
 }
 
 function Get-Ip ([string[]]$dnsServers, [string]$domain) {
@@ -136,7 +414,7 @@ function Get-Magic {
     }
     else {
         $magic = ""
-    } 
+    }
 
     if (-not $magic) {
         # Check if the user is already logged in
@@ -179,24 +457,20 @@ function Get-Magic {
 }
 
 Write-Host
-$savedCredentials = $false
-$credentialFilePath = "$HOME\.ut.net.creds"
 
-if ($reset) {
-    Remove-Item -Path $credentialFilePath -Force -ErrorAction SilentlyContinue
-}
-
-[string]$credentialData = Get-Content -ErrorAction SilentlyContinue $credentialFilePath
-
-if ($credentialData) {
+if ($credentialObject) {
     try {
         Show-Success "Found saved credentials."
         Show-Info "Use '-reset' flag to enter new credentials."
-        $credentialObject = ConvertFrom-Json $credentialData
-        [string]$UT_USERNAME = $credentialObject[0]
-        [SecureString]$SECURE_UT_PASSWORD = $credentialObject[1] | ConvertTo-SecureString -ErrorAction Stop
-        $UT_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SECURE_UT_PASSWORD))
-        $savedCredentials = $true
+        Show-Info "Use '-addAccount' flag to add another account."
+
+        # If chooseAccount flag is not set, use default account
+        if (-not $chooseAccount) {
+            [string]$UT_USERNAME = $credentialObject.default[0]
+            [SecureString]$SECURE_UT_PASSWORD = $credentialObject.default[1] | ConvertTo-SecureString -ErrorAction Stop
+            $UT_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringUni([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SECURE_UT_PASSWORD))
+            $savedCredentials = $true
+        }
     }
     catch {
         Show-Error "Failed to use the saved credentials."
@@ -216,14 +490,18 @@ if (-not $savedCredentials) {
     if (-not $noSave) {
         Show-Info "Saving credentials..."
         Show-Info "Use -noSave flag to not save credentials."
-        $credentialData = ConvertTo-Json $UT_USERNAME, $SECURE_UT_PASSWORD
 
-        # Save Content to file
-        $credentialData | Set-Content -Path $credentialFilePath
+        $newCredentialObject = @{
+            default  = @($UT_USERNAME, $SECURE_UT_PASSWORD)
+            accounts = @(, @($UT_USERNAME, $SECURE_UT_PASSWORD))
+        }
 
-        $credentialFile = gci -Force $credentialFilePath
-        $credentialFile.Attributes += "Hidden, System"
-        $credentialFile.Attributes -= "Archive"
+        if (Save-CredentialObject -credentialObject $newCredentialObject -filePath $credentialFilePath) {
+            Show-Success "Credentials saved successfully."
+        }
+        else {
+            Show-Error "Failed to save credentials, but continuing with login..."
+        }
     }
 }
 
@@ -231,7 +509,7 @@ if (-not $savedCredentials) {
 function Login-Acct ([string] $customAcctIp) {
     if (-not $customAcctIp) {
         if (-not $acctIp) {
-            $acctIp = Get-Ip -dnsServers $dnsServers -domain $acctDomain 
+            $acctIp = Get-Ip -dnsServers $dnsServers -domain $acctDomain
             Write-Host
             Show-Success "IP: '$acctIp'"
         }
