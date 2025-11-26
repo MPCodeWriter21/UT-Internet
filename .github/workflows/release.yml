@@ -30,7 +30,7 @@ jobs:
         id: extract_version
         run: |
           # Extract version from the PowerShell script
-          VERSION=$(grep -oP 'Show-Info "Version: \K[^"]+' login-to-internet.ps1 || echo "1.0.0")
+          VERSION=$(grep -oP '\[string\]\$currentVersion = "\K[^"]+' login-to-internet.ps1 || echo "1.0.0")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
