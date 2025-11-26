@@ -135,6 +135,8 @@ jobs:
           - 🔐 Secure credential management with encrypted storage
           - 🔄 Automatic session detection
           - 👥 Multi-account support - manage multiple UT accounts
+          - 🎯 Flexible default account - set to "None" for account selection prompt each time
+          - 🔔 Automatic update check - notifies when new version is available on GitHub
           - 🚪 Easy logout functionality
           - 📊 Traffic quota monitoring
           - 🔌 Multi-session disconnect capability
@@ -149,6 +151,7 @@ jobs:
           | `-chooseDefault` | Set default account (or "None" to prompt each time) |
           | `-chooseAccount` | Choose account for this session |
           | `-noRemainingTraffic` | Skip traffic display |
+          | `-noUpdateCheck` | Skip checking for updates on GitHub |
           | `-help` | Show help message |
           | `-version` | Show version |
 

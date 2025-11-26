@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.2.1-orange.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.3.0-orange.svg)](https://github.com)
 [![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
 
@@ -20,6 +20,7 @@ credential management, session control, and traffic monitoring.
 - 🚪 **Session Management**: Log out from active sessions with ease
 - 📊 **Traffic Monitoring**: View your remaining internet traffic quota
 - 🔌 **Multi-Session Handling**: Disconnect other active sessions when needed
+- 🔔 **Automatic Update Check**: Notifies you when a new version is available on GitHub
 - 🎨 **Colorful Interface**: Beautiful, color-coded output for better readability
 - ⚙️ **Flexible Options**: Multiple command-line flags for customized behavior
 
@@ -105,6 +106,7 @@ credentials are saved securely for future use.
 | `-chooseDefault`      | Set or unset the default account                             |
 | `-chooseAccount`      | Select an account for this session (keeps default unchanged) |
 | `-noRemainingTraffic` | Skip displaying remaining traffic quota                      |
+| `-noUpdateCheck`      | Skip checking for updates on GitHub                          |
 | `-help`               | Display help message with usage information                  |
 | `-version`            | Display script version                                       |
 
@@ -147,7 +149,35 @@ View your remaining internet quota in human-readable format:
 - Automatically converts UNITS to MB/GB/TB
 - Color-coded output for easy reading
 
-### 5. **Smart DNS Resolution**
+### 5. **Automatic Update Check**
+
+After successful login, the script automatically checks GitHub for new releases:
+
+- Compares your version with the latest release on GitHub
+- Displays a notification box if an update is available
+- Shows current version, latest version, and download link
+- Includes brief release notes preview
+- Can be disabled with the `-noUpdateCheck` flag
+
+Example output when an update is available:
+
+```
+  ===========================================================================
+ |                            UPDATE AVAILABLE!                              |
+  ===========================================================================
+ |  Current Version: 1.2.0                                                   |
+ |  Latest Version:  1.2.1                                                   |
+  ============================================================================
+ |  Download: https://github.com/MPCodeWriter21/UT-Internet/releases/latest  |
+  ============================================================================
+ |  What's Changed:                                                          |
+ |  #### Commits since v1.2.0:                                               |
+ |  - fix: Removed unnecessary empty lines for better readability (3e9cc70)  |
+  ===========================================================================
+ [i] Use '-noUpdateCheck' flag to disable update notifications.
+```
+
+### 6. **Smart DNS Resolution**
 
 The script uses multiple DNS servers to resolve the login portal:
 
@@ -179,10 +209,11 @@ graph TD
     K --> L{Login Success?}
     L -->|Yes| M[Show Traffic]
     L -->|No| N{Too Many Sessions?}
+    M --> R[Check for Update]
     N -->|Yes| O[Disconnect Other Sessions]
     N -->|No| P[Show Error]
     O --> K
-    M --> Q[End]
+    R --> Q[End]
     J --> Q
     P --> Q
     G --> Q
@@ -326,6 +357,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Future enhancements planned:
 
 - [x] Multiple account support (Added in v1.1.0)
+- [x] Automatic update notifications (Added in v1.3.0)
 - [ ] Automatic login on network connection
 - [ ] Traffic usage statistics and history
 - [ ] Scheduled auto-login
@@ -346,7 +378,27 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.2.1 (Latest)
+### Version 1.3.0 (Latest)
+
+**Automatic Update Check Release**
+
+- **GitHub update notifications** - Automatically checks for new releases after login
+- **Release notes preview** - Shows brief release notes from the latest version
+- **Configurable** - Use `-noUpdateCheck` flag to disable update notifications
+
+**New Flag:**
+
+- `-noUpdateCheck` - Skip checking for updates on GitHub
+
+**Behavior:**
+
+- After successful login and traffic display, queries GitHub API for latest release
+- Compares current version (1.3.0) with latest available version
+- Displays formatted notification box if update is available
+- Shows download link and first few lines of release notes
+- Never interrupts workflow if update check fails
+
+### Version 1.2.1
 
 **UI/UX Polish Release**
 

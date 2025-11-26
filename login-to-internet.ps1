@@ -30,14 +30,17 @@ param (
     [switch]$chooseDefault = $false,
     [switch]$chooseAccount = $false,
     [switch]$noRemainingTraffic = $false,
+    [switch]$noUpdateCheck = $false,
     [switch]$help = $false,
     [switch]$version = $false
 )
 
-Write-Host -ForegroundColor Yellow "=========================================================================="
-Write-Host -ForegroundColor White  "        Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof         "
-Write-Host -ForegroundColor White  "                  github.com/MPCodeWriter21/UT-Internet                   "
-Write-Host -ForegroundColor Yellow "=========================================================================="
+[string]$currentVersion = "1.3.0"
+
+Write-Host -ForegroundColor Yellow "================================================================================"
+Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
+Write-Host -ForegroundColor White  "                     github.com/MPCodeWriter21/UT-Internet                      "
+Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White
 
 function Show-Info {
@@ -239,7 +242,7 @@ function Add-NewAccount {
 if ($help) {
     Show-Info "This script logs you into the UT network."
     Write-Host
-    Show-Info "Usage: SCRIPT_NAME [-reset] [-noSave] [-noRemainingTraffic] [-help]"
+    Show-Info "Usage: SCRIPT_NAME [-reset] [-noSave] [-noRemainingTraffic] [-noUpdateCheck] [-help]"
     Show-Info "Options:"
     Show-Info "  -reset              Reset saved credentials."
     Show-Info "  -noSave             Do not save credentials."
@@ -247,13 +250,14 @@ if ($help) {
     Show-Info "  -chooseDefault      Set or unset default account"
     Show-Info "  -chooseAccount      Choose an account from the added accounts. (Keeps the default unchanged)"
     Show-Info "  -noRemainingTraffic Do not show remaining traffic."
+    Show-Info "  -noUpdateCheck      Do not check for updates on GitHub."
     Show-Info "  -help               Show this help message."
     Show-Info "  -version            Show the version of the script."
     exit 0
 }
 
 if ($version) {
-    Show-Info "Version: 1.2.1"
+    Show-Info "Version: $currentVersion"
     exit 0
 }
 
@@ -671,6 +675,131 @@ function Show-Remaining-Traffic {
     }
 }
 
+function Compare-SemanticVersion {
+    param(
+        [string]$version1,
+        [string]$version2
+    )
+
+    # Parse version strings (e.g., "1.2.3" or "1.2.3-beta")
+    $v1Parts = $version1 -split '-'
+    $v2Parts = $version2 -split '-'
+
+    $v1Numbers = $v1Parts[0] -split '\.' | ForEach-Object { [int]$_ }
+    $v2Numbers = $v2Parts[0] -split '\.' | ForEach-Object { [int]$_ }
+
+    # Pad arrays to same length
+    $maxLength = [Math]::Max($v1Numbers.Length, $v2Numbers.Length)
+    while ($v1Numbers.Length -lt $maxLength) { $v1Numbers += 0 }
+    while ($v2Numbers.Length -lt $maxLength) { $v2Numbers += 0 }
+
+    # Compare each part
+    for ($i = 0; $i -lt $maxLength; $i++) {
+        if ($v1Numbers[$i] -lt $v2Numbers[$i]) {
+            return -1  # version1 is older
+        }
+        elseif ($v1Numbers[$i] -gt $v2Numbers[$i]) {
+            return 1   # version1 is newer
+        }
+    }
+
+    # If base versions are equal, check pre-release tags
+    if ($v1Parts.Length -gt 1 -and $v2Parts.Length -eq 1) {
+        return -1  # version1 is pre-release, version2 is stable (version2 is newer)
+    }
+    elseif ($v1Parts.Length -eq 1 -and $v2Parts.Length -gt 1) {
+        return 1   # version1 is stable, version2 is pre-release (version1 is newer)
+    }
+
+    return 0  # versions are equal
+}
+
+function Check-Updates {
+    try {
+        $latestReleaseUrl = "https://api.github.com/repos/MPCodeWriter21/UT-Internet/releases/latest"
+
+        # Set TLS to 1.2 for GitHub API
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+        $response = Invoke-RestMethod -Uri $latestReleaseUrl -Method Get -ErrorAction Stop -TimeoutSec 5
+
+        $latestVersion = $response.tag_name -replace '^v', ''
+        $currentVersionClean = $currentVersion -replace '^v', ''
+
+        # Compare versions: -1 if current < latest, 0 if equal, 1 if current > latest
+        $comparison = Compare-SemanticVersion -version1 $currentVersionClean -version2 $latestVersion
+
+        if ($comparison -lt 0) {
+            Write-Host
+            Write-Host -ForegroundColor Yellow '  =========================================================================== '
+            Write-Host -ForegroundColor Yellow " |" -NoNewline
+            Write-Host -ForegroundColor Green    "                            UPDATE AVAILABLE!                              " -NoNewline
+            Write-Host -ForegroundColor Yellow                                                                              "|"
+            Write-Host -ForegroundColor Yellow "  =========================================================================== "
+            Write-Host -ForegroundColor Yellow " |" -NoNewline
+            Write-Host -ForegroundColor White "  Current Version: " -NoNewline
+            Write-Host -ForegroundColor Cyan "$currentVersionClean" -NoNewline
+            Write-Host -ForegroundColor White (" " * (56 - $currentVersionClean.Length)) -NoNewline
+            Write-Host -ForegroundColor Yellow "|"
+            Write-Host -ForegroundColor Yellow " |" -NoNewline
+            Write-Host -ForegroundColor White "  Latest Version:  " -NoNewline
+            Write-Host -ForegroundColor Green "$latestVersion" -NoNewline
+            Write-Host -ForegroundColor White (" " * (56 - $latestVersion.Length)) -NoNewline
+            Write-Host -ForegroundColor Yellow "|"
+            Write-Host -ForegroundColor Yellow "  ============================================================================ "
+            Write-Host -ForegroundColor Yellow " |" -NoNewline
+            Write-Host -ForegroundColor White "  Download: " -NoNewline
+            Write-Host -ForegroundColor Cyan "https://github.com/MPCodeWriter21/UT-Internet/releases/latest" -NoNewline
+            Write-Host -ForegroundColor White "  " -NoNewline
+            Write-Host -ForegroundColor Yellow "|"
+            Write-Host -ForegroundColor Yellow "  ============================================================================ "
+
+            if ($response.body) {
+                # Extract content between "### 📝 What's Changed" and "### ⚙️ Features"
+                $bodyLines = $response.body -split "`n"
+                $startIndex = -1
+                $endIndex = -1
+
+                for ($i = 0; $i -lt $bodyLines.Length; $i++) {
+                    if ($bodyLines[$i] -match "###.*What's Changed") {
+                        $startIndex = $i + 1
+                    }
+                    elseif ($startIndex -ge 0 -and $bodyLines[$i] -match "###.*Features") {
+                        $endIndex = $i
+                        break
+                    }
+                }
+
+                if ($startIndex -ge 0) {
+                    if ($endIndex -lt 0) { $endIndex = $bodyLines.Length }
+                    $releaseNotes = $bodyLines[$startIndex..($endIndex - 1)] | Where-Object { $_.Trim() -ne "" }
+
+                    if ($releaseNotes.Count -gt 0) {
+                        Write-Host -ForegroundColor Yellow " |" -NoNewline
+                        Write-Host -ForegroundColor White "  What's Changed:" -NoNewline
+                        Write-Host -ForegroundColor White (" " * 58) -NoNewline
+                        Write-Host -ForegroundColor Yellow "|"
+
+                        foreach ($line in $releaseNotes) {
+                            $truncated = if ($line.Length -gt 71) { $line.Substring(0, 68) + "..." } else { $line }
+                            Write-Host -ForegroundColor Yellow " |" -NoNewline
+                            Write-Host -ForegroundColor Gray "  $truncated" -NoNewline
+                            Write-Host -ForegroundColor White (" " * (73 - $truncated.Length)) -NoNewline
+                            Write-Host -ForegroundColor Yellow "|"
+                        }
+                    }
+                }
+            }
+
+            Write-Host -ForegroundColor Yellow "  =========================================================================== "
+            Show-Info "Use '-noUpdateCheck' flag to disable update notifications."
+        }
+    }
+    catch {
+        Write-Host -ForegroundColor DarkGray " [i] Could not check for updates: $($_.Exception.Message)"
+    }
+}
+
 
 function Login-Device {
     Write-Host
@@ -694,6 +823,9 @@ function Login-Device {
         Show-Success "Successfully logged in!"
         if (-not $noRemainingTraffic) {
             Show-Remaining-Traffic
+        }
+        if (-not $noUpdateCheck) {
+            Check-Updates
         }
     }
     else {
