@@ -35,7 +35,7 @@ param (
     [switch]$version = $false
 )
 
-[string]$currentVersion = "1.3.0"
+[string]$currentVersion = "1.3.1"
 
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
@@ -599,7 +599,7 @@ function Login-Acct ([string] $customAcctIp) {
     $loginPage = Invoke-WebRequest -Uri $loginUrl -WebSession $session `
         -Headers @{
         Host = "$acctDomain"
-    }
+    } -UseBasicParsing
     $loginResponse = Invoke-WebRequest -Uri $loginUrl -Method "POST" `
         -Body $data -ContentType "application/x-www-form-urlencoded" -WebSession $session `
         -Headers @{

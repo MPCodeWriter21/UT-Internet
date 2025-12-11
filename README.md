@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.3.0-orange.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.3.1-orange.svg)](https://github.com)
 [![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
 
@@ -378,7 +378,13 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.3.0 (Latest)
+### Version 1.3.1 (Latest)
+
+**Bug Fixes and Improvements**
+
+- Make sure to use -UseBasicParsing flag with Invoke-WebRequest to avoid executing scripts and suppress security warning message.
+
+### Version 1.3.0
 
 **Automatic Update Check Release**
 
