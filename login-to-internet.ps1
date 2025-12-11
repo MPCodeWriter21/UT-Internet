@@ -35,7 +35,7 @@ param (
     [switch]$version = $false
 )
 
-[string]$currentVersion = "1.3.2"
+[string]$currentVersion = "1.4.0"
 
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
@@ -573,6 +573,18 @@ if (-not $savedCredentials) {
 
 
 function Login-Acct ([string] $customAcctIp) {
+    # Check if tesseract is installed
+    if (-not (Get-Command tesseract -ErrorAction SilentlyContinue)) {
+        Show-Error "Tesseract OCR is not installed or not found in PATH."
+        Show-Info "Please install Tesseract OCR to use ACCT services."
+        return @{
+            Session  = $null
+            Response = $null
+            Ip       = $null
+            Error    = "Login to ACCT failed due to missing OCR tool."
+        }
+    }
+
     if (-not $customAcctIp) {
         if (-not $acctIp) {
             $acctIp = Get-Ip -dnsServers $dnsServers -domain $acctDomain
@@ -584,15 +596,6 @@ function Login-Acct ([string] $customAcctIp) {
 
     $loginUrl = "https://$acctIp/IBSng/user/"
 
-    # Prepare the data for the login request
-    $data = @{
-        normal_username = $UT_USERNAME
-        normal_password = $UT_PASSWORD
-        lang            = 'fa'
-        x               = 22
-        y               = 14
-    }
-
     # Send the login request
     $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     $session.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
@@ -600,6 +603,50 @@ function Login-Acct ([string] $customAcctIp) {
         -Headers @{
         Host = "$acctDomain"
     } -UseBasicParsing
+
+    Show-Info "Downloading CAPTCHA image..."
+    $captchaUrl = "https://$acctIp/IBSng/user/captcha.php"
+    $captchaResponse = Invoke-WebRequest -UseBasicParsing -Uri $captchaUrl `
+        -WebSession $session `
+        -Headers @{
+        Host                 = "$acctDomain"
+        "Accept"             = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+        "Accept-Encoding"    = "gzip, deflate, br, zstd"
+        "Accept-Language"    = "en"
+        "Cache-Control"      = "no-cache"
+        "Pragma"             = "no-cache"
+        "Referer"            = "https://acct.ut.ac.ir/IBSng/user/"
+        "Sec-Fetch-Dest"     = "image"
+        "Sec-Fetch-Mode"     = "no-cors"
+        "Sec-Fetch-Site"     = "same-origin"
+        "sec-ch-ua"          = "`"Chromium`";v=`"142`", `"Google Chrome`";v=`"142`", `"Not_A Brand`";v=`"99`""
+        "sec-ch-ua-mobile"   = "?0"
+        "sec-ch-ua-platform" = "`"Windows`""
+    }
+    $captchaBytes = $captchaResponse.Content
+    $captchaFilePath = "$env:TEMP\ut_captcha_$(Get-Random).png"
+    [System.IO.File]::WriteAllBytes($captchaFilePath, $captchaBytes)
+
+    Show-Info "Solving CAPTCHA..."
+    $captchaText = & tesseract $captchaFilePath stdout --oem 3 --psm 6 2>$null
+
+    Show-Info "Cleaning up temporary CAPTCHA file..."
+    Remove-Item -Path $captchaFilePath -Force -ErrorAction SilentlyContinue
+
+    # Make sure to remove @ut.ac.ir from the username if it's included
+    if ($UT_USERNAME -match "@ut\.ac\.ir$") {
+        $UT_USERNAME = $UT_USERNAME -replace "@ut\.ac\.ir$", ""
+    }
+    # Prepare the data for the login request
+    $data = @{
+        normal_username = $UT_USERNAME
+        normal_password = $UT_PASSWORD
+        lang            = 'fa'
+        captcha         = $captchaText.Trim()
+        x               = 43
+        y               = 6
+    }
+
     $loginResponse = Invoke-WebRequest -Uri $loginUrl -Method "POST" `
         -Body $data -ContentType "application/x-www-form-urlencoded" -WebSession $session `
         -Headers @{
@@ -610,17 +657,17 @@ function Login-Acct ([string] $customAcctIp) {
         Session  = $session
         Response = $loginResponse
         Ip       = $acctIp
+        Error    = $null
     }
 }
 
 
 function Disconnect-Sessions {
-    Write-Host
-    Show-Error "Connot disconnect sessions due to captcha protection on the acct server."
-    Show-Info "Please disconnect other sessions via the web portal while we work on a solution."
-    return
-
     $loginData = Login-Acct
+    if ($loginData.Error) {
+        Show-Error $loginData.Error
+        return
+    }
     $session = $loginData.Session
     $loginResponse = $loginData.Response
     $acctIp = $loginData.Ip
@@ -652,12 +699,12 @@ function Disconnect-Sessions {
 
 
 function Show-Remaining-Traffic {
-    Write-Host
-    Show-Error "Cannot show remaining traffic due to captcha protection on the acct server."
-    Show-Info "Please check your remaining traffic via the web portal while we work on a solution."
-    return
-
-    $loginResponse = (Login-Acct).Response
+    $loginData = Login-Acct
+    if ($loginData.Error) {
+        Show-Error $loginData.Error
+        return
+    }
+    $loginResponse = $loginData.Response
 
     if ($loginResponse.Content -match '<td class="Form_Content_Row_Right_2Col_light">([0-9.,\-]+) UNITS</td>') {
         $value = [float]$Matches[1]

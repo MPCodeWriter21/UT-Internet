@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.3.2-orange.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.4.0-orange.svg)](https://github.com)
 [![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
 
@@ -20,6 +20,7 @@ credential management, session control, and traffic monitoring.
 - 🚪 **Session Management**: Log out from active sessions with ease
 - 📊 **Traffic Monitoring**: View your remaining internet traffic quota
 - 🔌 **Multi-Session Handling**: Disconnect other active sessions when needed
+- 🤖 **Automatic CAPTCHA Solving**: Uses Tesseract OCR to automatically solve CAPTCHAs
 - 🔔 **Automatic Update Check**: Notifies you when a new version is available on GitHub
 - 🎨 **Colorful Interface**: Beautiful, color-coded output for better readability
 - ⚙️ **Flexible Options**: Multiple command-line flags for customized behavior
@@ -49,12 +50,37 @@ credential management, session control, and traffic monitoring.
 - **PowerShell**: Version 5.1 or higher
 - **Network**: Connected to the University of Tehran network
 - **Permissions**: Ability to make HTTPS requests
+- **Tesseract OCR**: Optional but recommended - Required for automatic CAPTCHA solving (traffic monitoring and session management)
 
 To check your PowerShell version:
 
 ```powershell
 $PSVersionTable.PSVersion
 ```
+
+### Installing Tesseract OCR
+
+Tesseract is required for automatic CAPTCHA solving when checking traffic or disconnecting other sessions.
+
+**Official Repository**: [tesseract-ocr/tesseract](https://github.com/tesseract-ocr/tesseract)
+
+**Installation Guide**: [Tesseract Installation Documentation](https://tesseract-ocr.github.io/tessdoc/Installation.html)
+
+**Quick Install Options:**
+
+**Option 1: Using Chocolatey (Recommended)**
+
+```powershell
+choco install tesseract
+```
+
+**Option 2: Manual Installation**
+
+1. Download from [UB Mannheim Tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (Windows installers)
+2. Install and add to PATH
+3. Verify installation: `tesseract --version`
+
+For other platforms and detailed instructions, see the [official installation guide](https://tesseract-ocr.github.io/tessdoc/Installation.html).
 
 ---
 
@@ -148,6 +174,7 @@ View your remaining internet quota in human-readable format:
 
 - Automatically converts UNITS to MB/GB/TB
 - Color-coded output for easy reading
+- Automatic CAPTCHA solving using Tesseract OCR
 
 ### 5. **Automatic Update Check**
 
@@ -255,6 +282,17 @@ graph TD
 - Check if your account is active
 - Try again later
 
+#### ❌ "Tesseract OCR is not installed or not found in PATH"
+
+**Cause**: Tesseract OCR is missing or not accessible
+
+**Solutions**:
+
+- Install Tesseract OCR (see [Requirements](#requirements) section)
+- Verify Tesseract is in your system PATH: `tesseract --version`
+- Restart PowerShell after installation
+- Note: This only affects traffic monitoring and session disconnection features
+
 #### ❌ Execution Policy Error
 
 **Error**: `cannot be loaded because running scripts is disabled`
@@ -358,9 +396,11 @@ Future enhancements planned:
 
 - [x] Multiple account support (Added in v1.1.0)
 - [x] Automatic update notifications (Added in v1.3.0)
+- [x] Bypass acct captcha (Added in v1.4.0 - Tesseract OCR integration)
 - [ ] Automatic login on network connection
 - [ ] Traffic usage statistics and history
 - [ ] Scheduled auto-login
+- [ ] Add additional methods of solving captcha (Use ocr.space API, manual input from the user)
 - [ ] Cross-platform support (Linux/macOS)
 
 ---
@@ -378,7 +418,31 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.3.2 (Latest)
+### Version 1.4.0 (Latest)
+
+**Automatic CAPTCHA Solving Release**
+
+- **Tesseract OCR integration** - Automatically solves CAPTCHAs using Tesseract OCR engine
+- **Traffic monitoring restored** - Re-enabled automatic traffic display with CAPTCHA bypass
+- **Session management restored** - Re-enabled automatic session disconnection with CAPTCHA bypass
+- **Smart username handling** - Automatically removes @ut.ac.ir suffix from usernames
+- **Graceful fallback** - Clear error messages if Tesseract is not installed
+- **Temporary file cleanup** - Automatically removes downloaded CAPTCHA images
+
+**Technical Details:**
+
+- Downloads CAPTCHA image from acct.ut.ac.ir
+- Uses Tesseract OCR with optimal settings (--oem 3 --psm 6)
+- Stores temporary CAPTCHA in system temp folder
+- Cleans up after processing
+- Maintains session cookies for authenticated requests
+
+**Requirements:**
+
+- Tesseract OCR must be installed and in PATH
+- See [Requirements](#requirements) section for installation instructions
+
+### Version 1.3.2
 
 **User Experience Improvements**
 
