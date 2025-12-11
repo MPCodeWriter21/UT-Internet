@@ -35,7 +35,7 @@ param (
     [switch]$version = $false
 )
 
-[string]$currentVersion = "1.3.1"
+[string]$currentVersion = "1.3.2"
 
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
@@ -615,6 +615,11 @@ function Login-Acct ([string] $customAcctIp) {
 
 
 function Disconnect-Sessions {
+    Write-Host
+    Show-Error "Connot disconnect sessions due to captcha protection on the acct server."
+    Show-Info "Please disconnect other sessions via the web portal while we work on a solution."
+    return
+
     $loginData = Login-Acct
     $session = $loginData.Session
     $loginResponse = $loginData.Response
@@ -647,6 +652,11 @@ function Disconnect-Sessions {
 
 
 function Show-Remaining-Traffic {
+    Write-Host
+    Show-Error "Cannot show remaining traffic due to captcha protection on the acct server."
+    Show-Info "Please check your remaining traffic via the web portal while we work on a solution."
+    return
+
     $loginResponse = (Login-Acct).Response
 
     if ($loginResponse.Content -match '<td class="Form_Content_Row_Right_2Col_light">([0-9.,\-]+) UNITS</td>') {

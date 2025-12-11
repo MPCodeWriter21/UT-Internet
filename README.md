@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.3.1-orange.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.3.2-orange.svg)](https://github.com)
 [![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
 
@@ -378,7 +378,18 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.3.1 (Latest)
+### Version 1.3.2 (Latest)
+
+**User Experience Improvements**
+
+- **Clear error messages** - Added understandable error messages explaining captcha protection on the account server
+- **Traffic monitoring** - Temporarily disabled automatic traffic display due to captcha protection
+- **Session disconnection** - Temporarily disabled automatic session disconnection due to captcha protection
+- **User guidance** - Directs users to [web portal](https://acct.ut.ac.ir/) for traffic checking and session management while working on a solution
+
+**Note:** The account server now has captcha protection. Traffic monitoring and automatic session disconnection features are temporarily unavailable through the script. Users are advised to use the web portal for these functions.
+
+### Version 1.3.1
 
 **Bug Fixes and Improvements**
 
