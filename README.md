@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.0-orange.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.4.1-orange.svg)](https://github.com)
 [![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
 
@@ -418,7 +418,22 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.4.0 (Latest)
+### Version 1.4.1 (Latest)
+
+**Bug Fixes and Code Improvements**
+
+- **Enhanced DNS resolution** - Added proper error handling for unexpected IP address types
+- **Improved type checking** - Better handling of different DNS response formats (array vs string)
+- **Better diagnostics** - Clear error messages when DNS resolution returns unexpected data types
+
+**Technical Details:**
+
+- Fixed type checking in `Get-Ip` function for IPAddress objects
+- Added exception handling with descriptive messages for unexpected types
+- Improved fallback DNS resolution with proper type detection
+- Ensures script fails gracefully with informative errors instead of silent failures
+
+### Version 1.4.0
 
 **Automatic CAPTCHA Solving Release**
 

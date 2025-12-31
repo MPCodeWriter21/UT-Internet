@@ -35,7 +35,7 @@ param (
     [switch]$version = $false
 )
 
-[string]$currentVersion = "1.4.0"
+[string]$currentVersion = "1.4.1"
 
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
@@ -396,7 +396,16 @@ function Get-Ip ([string[]]$dnsServers, [string]$domain) {
         try {
             $resolved = Resolve-DnsName -Name $domain -Server $dns -Type A -ErrorAction Stop
             if ($resolved) {
-                $resolved.IPAddress[0]
+                if ($resolved.IPAddress.GetType().Name -eq "Object[]") {
+                    $resolved.IPAddress[0]
+                }
+                elseif ($resolved.IPAddress.GetType().Name -eq "String") {
+                    $resolved.IPAddress
+                }
+                else {
+                    Show-Error "Unexpected IPAddress type: $($resolved.IPAddress.GetType().Name)"
+                    throw "Unexpected IPAddress type returned from DNS resolution"
+                }
                 break
             }
         }
@@ -410,7 +419,16 @@ function Get-Ip ([string[]]$dnsServers, [string]$domain) {
         try {
             $resolved = Resolve-DnsName -Name $domain -Type A -ErrorAction Stop
             if ($resolved) {
-                $ip = $resolved.IPAddress[0]
+                if ($resolved.IPAddress.GetType().Name -eq "Object[]") {
+                    $ip = $resolved.IPAddress[0]
+                }
+                elseif ($resolved.IPAddress.GetType().Name -eq "String") {
+                    $ip = $resolved.IPAddress
+                }
+                else {
+                    Show-Error "Unexpected IPAddress type: $($resolved.IPAddress.GetType().Name)"
+                    throw "Unexpected IPAddress type returned from DNS resolution"
+                }
             }
         }
         catch {}
