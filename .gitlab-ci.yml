@@ -4,14 +4,9 @@ stages:
 variables:
   GIT_DEPTH: 0
 
-# Manual pipeline input (equivalent of workflow_dispatch `version` input).
-# When running manually from the GitLab UI, set RELEASE_VERSION (e.g. 1.4.2).
-# If empty, the version is extracted from login-to-internet.ps1 ($currentVersion).
-spec:
-  inputs:
-    version:
-      description: 'Version number (e.g., 1.4.2). Leave empty to extract from script.'
-      default: ''
+# Manual version override (equivalent of workflow_dispatch `version` input).
+# When running manually from the GitLab UI, set the RELEASE_VERSION variable
+# (e.g. 1.4.2). If empty, the version is extracted from login-to-internet.ps1 ($currentVersion).
 
 create-release:
   stage: release
@@ -35,8 +30,6 @@ create-release:
       echo "Extracting version from script..."
       if [ -n "$RELEASE_VERSION" ]; then
         VERSION="$RELEASE_VERSION"
-      elif [ -n "$[[ inputs.version ]]" ]; then
-        VERSION="$[[ inputs.version ]]"
       else
         VERSION=$(sed -n 's/.*\$currentVersion *= *"\([^"]*\)".*/\1/p' login-to-internet.ps1 | head -n1)
         if [ -z "$VERSION" ]; then
