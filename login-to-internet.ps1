@@ -1,6 +1,6 @@
 # ==================================================================================== #
 #                      Copyright (c) 2024-2025 Mehrad Pooryoussof                      #
-#                        github.com/MPCodeWriter21/UT-Internet                         #
+#                        gitlab.com/CodeWriter21/UT-Internet                          #
 # ==================================================================================== #
 # - What is this script?                                                               #
 # + This script is a PowerShell script that logs you into the UT network.              #
@@ -35,11 +35,11 @@ param (
     [switch]$version = $false
 )
 
-[string]$currentVersion = "1.4.1"
+[string]$currentVersion = "1.4.2"
 
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
-Write-Host -ForegroundColor White  "                     github.com/MPCodeWriter21/UT-Internet                      "
+Write-Host -ForegroundColor White  "                     gitlab.com/CodeWriter21/UT-Internet                       "
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White
 
@@ -250,7 +250,7 @@ if ($help) {
     Show-Info "  -chooseDefault      Set or unset default account"
     Show-Info "  -chooseAccount      Choose an account from the added accounts. (Keeps the default unchanged)"
     Show-Info "  -noRemainingTraffic Do not show remaining traffic."
-    Show-Info "  -noUpdateCheck      Do not check for updates on GitHub."
+    Show-Info "  -noUpdateCheck      Do not check for updates on GitLab."
     Show-Info "  -help               Show this help message."
     Show-Info "  -version            Show the version of the script."
     exit 0
@@ -791,15 +791,28 @@ function Compare-SemanticVersion {
 
 function Check-Updates {
     try {
-        $latestReleaseUrl = "https://api.github.com/repos/MPCodeWriter21/UT-Internet/releases/latest"
+        $latestReleaseUrl = "https://gitlab.com/api/v4/projects/CodeWriter21%2FUT-Internet/releases"
 
-        # Set TLS to 1.2 for GitHub API
+        # Set TLS to 1.2 for GitLab API
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
         $response = Invoke-RestMethod -Uri $latestReleaseUrl -Method Get -ErrorAction Stop -TimeoutSec 5
 
-        $latestVersion = $response.tag_name -replace '^v', ''
+        # GitLab returns an array of releases sorted by released_at; take the newest
+        $latest = if ($response -is [array]) {
+            $response | Sort-Object -Property released_at -Descending | Select-Object -First 1
+        }
+        else {
+            $response
+        }
+
+        if (-not $latest -or -not $latest.tag_name) {
+            return
+        }
+
+        $latestVersion = $latest.tag_name -replace '^v', ''
         $currentVersionClean = $currentVersion -replace '^v', ''
+        $downloadUrl = "https://gitlab.com/CodeWriter21/UT-Internet/-/releases/$($latest.tag_name)"
 
         # Compare versions: -1 if current < latest, 0 if equal, 1 if current > latest
         $comparison = Compare-SemanticVersion -version1 $currentVersionClean -version2 $latestVersion
@@ -824,14 +837,15 @@ function Check-Updates {
             Write-Host -ForegroundColor Yellow "  ============================================================================ "
             Write-Host -ForegroundColor Yellow " |" -NoNewline
             Write-Host -ForegroundColor White "  Download: " -NoNewline
-            Write-Host -ForegroundColor Cyan "https://github.com/MPCodeWriter21/UT-Internet/releases/latest" -NoNewline
+            Write-Host -ForegroundColor Cyan "$downloadUrl" -NoNewline
             Write-Host -ForegroundColor White "  " -NoNewline
             Write-Host -ForegroundColor Yellow "|"
             Write-Host -ForegroundColor Yellow "  ============================================================================ "
 
-            if ($response.body) {
+            $releaseBody = $latest.description
+            if ($releaseBody) {
                 # Extract content between "### 📝 What's Changed" and "### ⚙️ Features"
-                $bodyLines = $response.body -split "`n"
+                $bodyLines = $releaseBody -split "`n"
                 $startIndex = -1
                 $endIndex = -1
 

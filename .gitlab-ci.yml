@@ -1,0 +1,217 @@
+stages:
+  - release
+
+variables:
+  GIT_DEPTH: 0
+
+# Manual pipeline input (equivalent of workflow_dispatch `version` input).
+# When running manually from the GitLab UI, set RELEASE_VERSION (e.g. 1.4.2).
+# If empty, the version is extracted from login-to-internet.ps1 ($currentVersion).
+spec:
+  inputs:
+    version:
+      description: 'Version number (e.g., 1.4.2). Leave empty to extract from script.'
+      default: ''
+
+create-release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  before_script:
+    - apk add --no-cache git bash curl ca-certificates
+  rules:
+    # Don't run on tag pipelines (avoids a release loop after we push the tag)
+    - if: $CI_COMMIT_TAG
+      when: never
+    # Auto-release on pushes to master touching the script (mirrors old Actions trigger)
+    - if: $CI_COMMIT_BRANCH == "master"
+      changes:
+        - login-to-internet.ps1
+    # Allow manual runs from the GitLab UI (mirrors workflow_dispatch)
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "api"
+  script:
+    - |
+      set -e
+      echo "Extracting version from script..."
+      if [ -n "$RELEASE_VERSION" ]; then
+        VERSION="$RELEASE_VERSION"
+      elif [ -n "$[[ inputs.version ]]" ]; then
+        VERSION="$[[ inputs.version ]]"
+      else
+        VERSION=$(sed -n 's/.*\$currentVersion *= *"\([^"]*\)".*/\1/p' login-to-internet.ps1 | head -n1)
+        if [ -z "$VERSION" ]; then
+          VERSION="1.0.0"
+        fi
+      fi
+      # Strip a leading 'v' if the manual input included one
+      VERSION=$(echo "$VERSION" | sed 's/^v//')
+      TAG="v$VERSION"
+      BUILD_NUMBER=$(git rev-list --count HEAD)
+      SHORT_SHA=$(git rev-parse --short HEAD)
+      echo "VERSION=$VERSION" | tee version.env
+      echo "TAG=$TAG" | tee -a version.env
+      echo "BUILD_NUMBER=$BUILD_NUMBER" | tee -a version.env
+      echo "SHORT_SHA=$SHORT_SHA" | tee -a version.env
+      echo "Extracted version: $VERSION"
+      echo "Tag: $TAG"
+      echo "Build number: $BUILD_NUMBER"
+      echo "Commit SHA: $SHORT_SHA"
+    - |
+      set -e
+      # shellcheck disable=SC1091
+      . ./version.env
+      echo "Generating login-to-internet.cmd from login-to-internet.ps1..."
+      {
+        echo '@echo off'
+        echo 'PowerShell -Command "Set-ExecutionPolicy -Scope CurrentUser RemoteSigned;$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ((New-Guid).ToString('"'N'"') + '"'.ps1'"'); Get-Content '"'%~dpnx0'"' | Select-Object -Skip 3 | Out-String > $tmp; Invoke-Expression '"'"'& \"$tmp\" %*'"'"'; Remove-Item $tmp"'
+        echo 'goto :eof'
+      } > login-to-internet.cmd
+      cat login-to-internet.ps1 >> login-to-internet.cmd
+      echo "Successfully generated login-to-internet.cmd"
+      if [ -f login-to-internet.cmd ]; then
+        echo "login-to-internet.cmd created successfully"
+        wc -c < login-to-internet.cmd
+      else
+        echo "Failed to create login-to-internet.cmd"
+        exit 1
+      fi
+    - |
+      set -e
+      echo "Generating checksums..."
+      sha256sum login-to-internet.ps1 > checksums.txt
+      sha256sum login-to-internet.cmd >> checksums.txt
+      cat checksums.txt
+    - |
+      set -e
+      # shellcheck disable=SC1091
+      . ./version.env
+      echo "Generating release notes..."
+      LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+      {
+        echo "## 🎉 UT Internet Login Script - Version $VERSION"
+        echo ""
+        echo "### 📦 Release Information"
+        echo "- **Version**: $VERSION"
+        echo "- **Build**: #$BUILD_NUMBER"
+        echo "- **Commit**: \`$SHORT_SHA\`"
+        echo "- **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        echo ""
+        echo "### 📥 Downloads"
+        echo "This release includes:"
+        echo "- \`login-to-internet.ps1\` - PowerShell script (recommended)"
+        echo "- \`login-to-internet.cmd\` - Batch wrapper for easy double-click execution"
+        echo "- \`checksums.txt\` - SHA256 checksums for verification"
+        echo ""
+        echo '### 🚀 Quick Start'
+        echo ""
+        echo '**Using PowerShell Script (.ps1):**'
+        echo '```powershell'
+        echo '# Download and run'
+        echo '.\login-to-internet.ps1'
+        echo '```'
+        echo ""
+        echo '**Using Batch File (.cmd):**'
+        echo '- Simply double-click `login-to-internet.cmd`'
+        echo '- Or run from Command Prompt: `login-to-internet.cmd`'
+        echo ""
+        echo "### 📝 What's Changed"
+        echo ""
+      } > release_notes.md
+      if [ -n "$LAST_TAG" ]; then
+        echo "#### Commits since $LAST_TAG:" >> release_notes.md
+        git log "$LAST_TAG"..HEAD --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
+        echo "" >> release_notes.md
+      else
+        echo "#### Recent Commits:" >> release_notes.md
+        git log -5 --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
+        echo "" >> release_notes.md
+      fi
+      cat >> release_notes.md << 'EOF'
+
+      ### ⚙️ Features
+      - 🔐 Secure credential management with encrypted storage
+      - 🔄 Automatic session detection
+      - 👥 Multi-account support - manage multiple UT accounts
+      - 🎯 Flexible default account - set to "None" for account selection prompt each time
+      - 🔔 Automatic update check - notifies when new version is available on GitLab
+      - 🚪 Easy logout functionality
+      - 📊 Traffic quota monitoring
+      - 🔌 Multi-session disconnect capability
+      - 🎨 Colorful, user-friendly interface
+
+      ### 💡 Command-Line Options
+      | Flag | Description |
+      |------|-------------|
+      | `-reset` | Reset saved credentials |
+      | `-noSave` | Don't save credentials |
+      | `-addAccount` | Add a new account |
+      | `-chooseDefault` | Set default account (or "None" to prompt each time) |
+      | `-chooseAccount` | Choose account for this session |
+      | `-noRemainingTraffic` | Skip traffic display |
+      | `-noUpdateCheck` | Skip checking for updates on GitLab |
+      | `-help` | Show help message |
+      | `-version` | Show version |
+
+      ### 🔒 Security
+      - Credentials are encrypted using Windows DPAPI
+      - Only your user account can decrypt stored credentials
+      - Credentials stored in hidden system file
+      EOF
+      echo "" >> release_notes.md
+      echo "### 📚 Documentation" >> release_notes.md
+      echo "For detailed documentation, see [README.md]($CI_PROJECT_URL/-/blob/master/README.md)" >> release_notes.md
+      echo "" >> release_notes.md
+      echo "### 🐛 Issues & Support" >> release_notes.md
+      echo "Found a bug or need help? [Open an issue]($CI_PROJECT_URL/-/issues)" >> release_notes.md
+      echo "" >> release_notes.md
+      echo "---" >> release_notes.md
+      echo "" >> release_notes.md
+      echo "**Verify Downloads:**" >> release_notes.md
+      echo "Use the checksums in \`checksums.txt\` to verify file integrity:" >> release_notes.md
+      echo '```powershell' >> release_notes.md
+      echo "# PowerShell verification" >> release_notes.md
+      echo "Get-FileHash login-to-internet.ps1 -Algorithm SHA256" >> release_notes.md
+      echo "Get-FileHash login-to-internet.cmd -Algorithm SHA256" >> release_notes.md
+      echo '```' >> release_notes.md
+      echo "Release notes generated successfully"
+    - |
+      set -e
+      # shellcheck disable=SC1091
+      . ./version.env
+      if git rev-parse "$TAG" >/dev/null 2>&1; then
+        echo "Tag $TAG already exists"
+        exit 1
+      else
+        echo "Tag $TAG is new"
+      fi
+      git config user.name "gitlab-ci[bot]"
+      git config user.email "gitlab-ci[bot]@users.noreply.gitlab.com"
+      git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+      git tag -a "$TAG" -m "Release $TAG - Build #$BUILD_NUMBER"
+      git push origin "$TAG"
+      echo "Tag $TAG created and pushed"
+  artifacts:
+    paths:
+      - login-to-internet.ps1
+      - login-to-internet.cmd
+      - checksums.txt
+      - release_notes.md
+    expire_in: 1 year
+    when: on_success
+    reports:
+      dotenv: version.env
+  release:
+    tag_name: $TAG
+    name: 'UT Internet Login Script v$VERSION'
+    description: ./release_notes.md
+    assets:
+      links:
+        - name: 'login-to-internet.ps1'
+          url: '$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/login-to-internet.ps1'
+          link_type: 'package'
+        - name: 'login-to-internet.cmd'
+          url: '$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/login-to-internet.cmd'
+          link_type: 'package'
+        - name: 'checksums.txt'
+          url: '$CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/checksums.txt'
+          link_type: 'other'

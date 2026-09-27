@@ -2,9 +2,9 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.1-orange.svg)](https://github.com)
-[![Release](https://img.shields.io/github/v/release/MPCodeWriter21/UT-Internet?label=Latest%20Release)](https://github.com/MPCodeWriter21/UT-Internet/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/MPCodeWriter21/UT-Internet/total?label=Downloads)](https://github.com/MPCodeWriter21/UT-Internet/releases)
+[![Version](https://img.shields.io/badge/Version-1.4.2-orange.svg)](https://gitlab.com/CodeWriter21/UT-Internet)
+[![Pipeline](https://gitlab.com/CodeWriter21/UT-Internet/badges/master/pipeline.svg)](https://gitlab.com/CodeWriter21/UT-Internet/-/pipelines)
+[![Release](https://img.shields.io/gitlab/v/release/CodeWriter21%2FUT-Internet?label=Latest%20Release)](https://gitlab.com/CodeWriter21/UT-Internet/-/releases)
 
 A powerful and user-friendly PowerShell script for managing University of Tehran (UT)
 network authentication. This script simplifies the login process with features like
@@ -21,7 +21,7 @@ credential management, session control, and traffic monitoring.
 - 📊 **Traffic Monitoring**: View your remaining internet traffic quota
 - 🔌 **Multi-Session Handling**: Disconnect other active sessions when needed
 - 🤖 **Automatic CAPTCHA Solving**: Uses Tesseract OCR to automatically solve CAPTCHAs
-- 🔔 **Automatic Update Check**: Notifies you when a new version is available on GitHub
+- 🔔 **Automatic Update Check**: Notifies you when a new version is available on GitLab
 - 🎨 **Colorful Interface**: Beautiful, color-coded output for better readability
 - ⚙️ **Flexible Options**: Multiple command-line flags for customized behavior
 
@@ -88,7 +88,7 @@ For other platforms and detailed instructions, see the [official installation gu
 
 ### Method 1: Download from Releases (Recommended)
 
-Download the latest version from the [Releases page](https://github.com/MPCodeWriter21/UT-Internet/releases/latest):
+Download the latest version from the [Releases page](https://gitlab.com/CodeWriter21/UT-Internet/-/releases):
 
 1. Download `login-to-internet.cmd`
 2. Double-click to run
@@ -98,7 +98,7 @@ Download the latest version from the [Releases page](https://github.com/MPCodeWr
 
 ```powershell
 # Clone the repository
-git clone https://github.com/yourusername/UT-Internet.git
+git clone https://gitlab.com/CodeWriter21/UT-Internet.git
 
 # Navigate to the directory
 cd UT-Internet
@@ -132,7 +132,7 @@ credentials are saved securely for future use.
 | `-chooseDefault`      | Set or unset the default account                             |
 | `-chooseAccount`      | Select an account for this session (keeps default unchanged) |
 | `-noRemainingTraffic` | Skip displaying remaining traffic quota                      |
-| `-noUpdateCheck`      | Skip checking for updates on GitHub                          |
+| `-noUpdateCheck`      | Skip checking for updates on GitLab                          |
 | `-help`               | Display help message with usage information                  |
 | `-version`            | Display script version                                       |
 
@@ -178,9 +178,9 @@ View your remaining internet quota in human-readable format:
 
 ### 5. **Automatic Update Check**
 
-After successful login, the script automatically checks GitHub for new releases:
+After successful login, the script automatically checks GitLab for new releases:
 
-- Compares your version with the latest release on GitHub
+- Compares your version with the latest release on GitLab
 - Displays a notification box if an update is available
 - Shows current version, latest version, and download link
 - Includes brief release notes preview
@@ -195,7 +195,7 @@ Example output when an update is available:
  |  Current Version: 1.2.0                                                   |
  |  Latest Version:  1.2.1                                                   |
   ============================================================================
- |  Download: https://github.com/MPCodeWriter21/UT-Internet/releases/latest  |
+ |  Download: https://gitlab.com/CodeWriter21/UT-Internet/-/releases  |
   ============================================================================
  |  What's Changed:                                                          |
  |  #### Commits since v1.2.0:                                               |
@@ -359,7 +359,7 @@ Open an issue describing:
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+5. Open a Merge Request
 
 ---
 
@@ -375,7 +375,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Mehrad Pooryoussof (CodeWriter21)**
 
-- GitHub: [@MPCodeWriter21](https://github.com/MPCodeWriter21)
+- GitLab: [@CodeWriter21](https://gitlab.com/CodeWriter21)
 - Email: <CodeWriter21@gmail.com>
 
 ---
@@ -418,7 +418,16 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.4.1 (Latest)
+### Version 1.4.2 (Latest)
+
+**GitLab Migration Release**
+
+- **Migrated from GitHub to GitLab** - Repository now hosted at [CodeWriter21/UT-Internet](https://gitlab.com/CodeWriter21/UT-Internet)
+- **Automatic update check** - Now queries the GitLab Releases API (`https://gitlab.com/api/v4/projects/CodeWriter21%2FUT-Internet/releases`)
+- **CI/CD** - Replaced GitHub Actions release workflow with GitLab CI/CD (`.gitlab-ci.yml`)
+- **Documentation** - Updated badges, clone URL, releases links, and contribution guide (Merge Requests) for GitLab
+
+### Version 1.4.1
 
 **Bug Fixes and Code Improvements**
 
