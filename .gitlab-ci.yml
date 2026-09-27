@@ -4,9 +4,14 @@ stages:
 variables:
   GIT_DEPTH: 0
 
-# Manual version override (equivalent of workflow_dispatch `version` input).
-# When running manually from the GitLab UI, set the RELEASE_VERSION variable
-# (e.g. 1.4.2). If empty, the version is extracted from login-to-internet.ps1 ($currentVersion).
+# Tag-triggered releases.
+# To cut a release:
+#   1. Bump $currentVersion in login-to-internet.ps1 and commit it.
+#   2. Tag the commit:  git tag -a v<version> -m "Release v<version>"
+#   3. Push the tag:    git push origin v<version>
+# The pipeline runs on the tag, verifies it matches the script version,
+# then builds artifacts and creates the GitLab Release. No push-back
+# from CI is needed, so no extra tokens are required.
 
 create-release:
   stage: release
@@ -14,45 +19,31 @@ create-release:
   before_script:
     - apk add --no-cache git bash curl ca-certificates
   rules:
-    # Don't run on tag pipelines (avoids a release loop after we push the tag)
     - if: $CI_COMMIT_TAG
-      when: never
-    # Auto-release on pushes to master touching the script (mirrors old Actions trigger)
-    - if: $CI_COMMIT_BRANCH == "master"
-      changes:
-        - login-to-internet.ps1
-    # Allow manual runs from the GitLab UI (mirrors workflow_dispatch)
-    - if: $CI_PIPELINE_SOURCE == "web"
-    - if: $CI_PIPELINE_SOURCE == "api"
   script:
     - |
       set -e
-      echo "Extracting version from script..."
-      if [ -n "$RELEASE_VERSION" ]; then
-        VERSION="$RELEASE_VERSION"
-      else
-        VERSION=$(sed -n 's/.*\$currentVersion *= *"\([^"]*\)".*/\1/p' login-to-internet.ps1 | head -n1)
-        if [ -z "$VERSION" ]; then
-          VERSION="1.0.0"
-        fi
+      TAG="$CI_COMMIT_TAG"
+      echo "Release tag: $TAG"
+      VERSION=$(sed -n 's/.*\$currentVersion *= *"\([^"]*\)".*/\1/p' login-to-internet.ps1 | head -n1)
+      if [ -z "$VERSION" ]; then
+        echo "ERROR: Could not extract \$currentVersion from login-to-internet.ps1"
+        exit 1
       fi
-      # Strip a leading 'v' if the manual input included one
-      VERSION=$(echo "$VERSION" | sed 's/^v//')
-      TAG="v$VERSION"
+      # Strip a leading 'v' from both sides before comparing
+      TAG_VERSION=$(echo "$TAG" | sed 's/^v//')
+      if [ "$TAG_VERSION" != "$VERSION" ]; then
+        echo "ERROR: Tag ($TAG) does not match \$currentVersion in script ($VERSION)."
+        echo "Tag the commit whose script version matches, e.g.: git tag -a v$VERSION"
+        exit 1
+      fi
       BUILD_NUMBER=$(git rev-list --count HEAD)
       SHORT_SHA=$(git rev-parse --short HEAD)
-      echo "VERSION=$VERSION" | tee version.env
-      echo "TAG=$TAG" | tee -a version.env
-      echo "BUILD_NUMBER=$BUILD_NUMBER" | tee -a version.env
-      echo "SHORT_SHA=$SHORT_SHA" | tee -a version.env
-      echo "Extracted version: $VERSION"
-      echo "Tag: $TAG"
+      echo "Version: $VERSION"
       echo "Build number: $BUILD_NUMBER"
       echo "Commit SHA: $SHORT_SHA"
     - |
       set -e
-      # shellcheck disable=SC1091
-      . ./version.env
       echo "Generating login-to-internet.cmd from login-to-internet.ps1..."
       {
         echo '@echo off'
@@ -76,10 +67,13 @@ create-release:
       cat checksums.txt
     - |
       set -e
-      # shellcheck disable=SC1091
-      . ./version.env
+      TAG="$CI_COMMIT_TAG"
+      VERSION=$(echo "$TAG" | sed 's/^v//')
+      BUILD_NUMBER=$(git rev-list --count HEAD)
+      SHORT_SHA=$(git rev-parse --short HEAD)
       echo "Generating release notes..."
-      LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+      # Previous tag (exclude the current one) for the changelog range
+      LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
       {
         echo "## 🎉 UT Internet Login Script - Version $VERSION"
         echo ""
@@ -167,22 +161,6 @@ create-release:
       echo "Get-FileHash login-to-internet.cmd -Algorithm SHA256" >> release_notes.md
       echo '```' >> release_notes.md
       echo "Release notes generated successfully"
-    - |
-      set -e
-      # shellcheck disable=SC1091
-      . ./version.env
-      if git rev-parse "$TAG" >/dev/null 2>&1; then
-        echo "Tag $TAG already exists"
-        exit 1
-      else
-        echo "Tag $TAG is new"
-      fi
-      git config user.name "gitlab-ci[bot]"
-      git config user.email "gitlab-ci[bot]@users.noreply.gitlab.com"
-      git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-      git tag -a "$TAG" -m "Release $TAG - Build #$BUILD_NUMBER"
-      git push origin "$TAG"
-      echo "Tag $TAG created and pushed"
   artifacts:
     paths:
       - login-to-internet.ps1
@@ -191,11 +169,9 @@ create-release:
       - release_notes.md
     expire_in: 1 year
     when: on_success
-    reports:
-      dotenv: version.env
   release:
-    tag_name: $TAG
-    name: 'UT Internet Login Script v$VERSION'
+    tag_name: $CI_COMMIT_TAG
+    name: 'UT Internet Login Script $CI_COMMIT_TAG'
     description: ./release_notes.md
     assets:
       links:
