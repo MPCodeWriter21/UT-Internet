@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.2-orange.svg)](https://gitlab.com/CodeWriter21/UT-Internet)
+[![Version](https://img.shields.io/badge/Version-1.4.3-orange.svg)](https://gitlab.com/CodeWriter21/UT-Internet)
 [![Pipeline](https://gitlab.com/CodeWriter21/UT-Internet/badges/master/pipeline.svg)](https://gitlab.com/CodeWriter21/UT-Internet/-/pipelines)
 [![Release](https://img.shields.io/gitlab/v/release/CodeWriter21%2FUT-Internet?label=Latest%20Release)](https://gitlab.com/CodeWriter21/UT-Internet/-/releases)
 
@@ -418,7 +418,15 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.4.2 (Latest)
+### Version 1.4.3 (Latest)
+
+**New Login Address Support**
+
+- **Port-agnostic portal URLs** - Centralized the portal port in a new `$internetPort` variable (empty by default; was hardcoded as `:1003`)
+- **Login, logout, and session URLs** - All portal/magic/logout/`4Tredir` URLs and `Host` headers now honor `$internetPort`
+- **Detection patterns updated** - Already-logged-in, logout, and login-success match patterns interpolate the configured port
+
+### Version 1.4.2
 
 **GitLab Migration Release**
 

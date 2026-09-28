@@ -35,7 +35,7 @@ param (
     [switch]$version = $false
 )
 
-[string]$currentVersion = "1.4.2"
+[string]$currentVersion = "1.4.3"
 
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
@@ -438,6 +438,7 @@ function Get-Ip ([string[]]$dnsServers, [string]$domain) {
 }
 
 $internetDomain = "internet.ut.ac.ir"
+$internetPort = "" # Used to be ":1003"
 $acctDomain = "acct.ut.ac.ir"
 $dnsServers = @("192.168.20.14", "192.168.20.15")
 
@@ -460,9 +461,9 @@ function Get-Magic {
     Show-Info "Getting the magic..."
 
     # Make a request to retrieve the magic token
-    $portalUrl = "https://$ip`:1003/portal?0"
+    $portalUrl = "https://$ip$internetPort/portal?0"
     $magicResponse = Invoke-WebRequest -Uri $portalUrl -Headers @{
-        Host = "$internetDomain`:1003"
+        Host = "$internetDomain$internetPort"
     } -UseBasicParsing
 
     # Extract the magic token from the response HTML
@@ -475,7 +476,7 @@ function Get-Magic {
 
     if (-not $magic) {
         # Check if the user is already logged in
-        if ($magicResponse.Content -match '<a href="https://internet.ut.ac.ir:1003/logout\?">') {
+        if ($magicResponse.Content -match "<a href=`"https://internet.ut.ac.ir$internetPort/logout\?`">") {
             Show-Success "You seem to be logged in already..."
             $title = " [!] Wanna logout?"
             $question = " [?] Do you want to log out?"
@@ -484,11 +485,11 @@ function Get-Magic {
             $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
             if ($decision -eq 0) {
                 Show-Info "Logging out..."
-                $logoutUrl = "https://$ip`:1003/logout?0"
+                $logoutUrl = "https://$ip$internetPort/logout?0"
                 $logoutResponse = Invoke-WebRequest -Uri $logoutUrl -Headers @{
-                    Host = "$internetDomain`:1003"
+                    Host = "$internetDomain$internetPort"
                 } -UseBasicParsing
-                if ($logoutResponse.Content -match '<script language="JavaScript">window.location="https://internet.ut.ac.ir:1003/login') {
+                if ($logoutResponse.Content -match "<script language=`"JavaScript`">window.location=`"https://internet.ut.ac.ir$internetPort/login") {
                     Show-Success "Successfully logged out."
                 }
                 else {
@@ -899,16 +900,16 @@ function Login-Device {
         username  = $UT_USERNAME
         password  = $UT_PASSWORD
         magic     = $magicValue
-        '4Tredir' = 'https://internet.ut.ac.ir:1003/portal?'
+        '4Tredir' = "https://internet.ut.ac.ir$internetPort/portal?"
     }
 
     # Send the login request
-    $response = Invoke-WebRequest -Uri "https://$ip`:1003" -Method Post -Body $data -ContentType "application/x-www-form-urlencoded" -Headers @{
-        Host = "$internetDomain`:1003"
+    $response = Invoke-WebRequest -Uri "https://$ip$internetPort" -Method Post -Body $data -ContentType "application/x-www-form-urlencoded" -Headers @{
+        Host = "$internetDomain$internetPort"
     } -UseBasicParsing
 
     # Check the response for a successful login
-    if ($response.Content -match 'window.location="https://internet.ut.ac.ir:1003/portal\?.*";') {
+    if ($response.Content -match "window.location=`"https://internet.ut.ac.ir$internetPort/portal\?.*`";") {
         Show-Success "Successfully logged in!"
         if (-not $noRemainingTraffic) {
             Show-Remaining-Traffic
@@ -919,7 +920,7 @@ function Login-Device {
     }
     else {
         Show-Error "Failed to login for some reason..."
-        if ($response.Content -match '<input type="hidden" name="4Tredir" value="https://internet.ut.ac.ir:1003/portal\?">') {
+        if ($response.Content -match "<input type=`"hidden`" name=`"4Tredir`" value=`"https://internet.ut.ac.ir$internetPort/portal\?`">") {
             $title = " [!] Try to disconnect other sessions?"
             $question = " [i] This login failure might be caused by too many sessions being logged in using your credentials.`n"
             $question += " [?] Do you want to try to disconnect other sessions?"
