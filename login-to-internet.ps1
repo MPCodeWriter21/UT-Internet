@@ -35,7 +35,7 @@ param (
     [switch]$version = $false
 )
 
-[string]$currentVersion = "1.4.3"
+[string]$currentVersion = "1.4.4"
 
 Write-Host -ForegroundColor Yellow "================================================================================"
 Write-Host -ForegroundColor White  "           Copyright (C) 2024-2025 CodeWriter21 - Mehrad Pooryoussof            "
@@ -250,7 +250,7 @@ if ($help) {
     Show-Info "  -chooseDefault      Set or unset default account"
     Show-Info "  -chooseAccount      Choose an account from the added accounts. (Keeps the default unchanged)"
     Show-Info "  -noRemainingTraffic Do not show remaining traffic."
-    Show-Info "  -noUpdateCheck      Do not check for updates on GitLab."
+    Show-Info "  -noUpdateCheck      Do not check for updates (GitLab/GitHub)."
     Show-Info "  -help               Show this help message."
     Show-Info "  -version            Show the version of the script."
     exit 0
@@ -792,28 +792,70 @@ function Compare-SemanticVersion {
 
 function Check-Updates {
     try {
-        $latestReleaseUrl = "https://gitlab.com/api/v4/projects/CodeWriter21%2FUT-Internet/releases"
-
-        # Set TLS to 1.2 for GitLab API
+        # Set TLS to 1.2 for the release APIs
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $response = Invoke-RestMethod -Uri $latestReleaseUrl -Method Get -ErrorAction Stop -TimeoutSec 5
+        $candidates = @()
+        $errors = @()
 
-        # GitLab returns an array of releases sorted by released_at; take the newest
-        $latest = if ($response -is [array]) {
-            $response | Sort-Object -Property released_at -Descending | Select-Object -First 1
+        # Primary source: GitLab Releases
+        try {
+            $glReleases = Invoke-RestMethod -Uri "https://gitlab.com/api/v4/projects/CodeWriter21%2FUT-Internet/releases" -Method Get -ErrorAction Stop -TimeoutSec 5
+
+            # GitLab returns an array of releases sorted by released_at; take the newest
+            $glLatest = if ($glReleases -is [array]) {
+                $glReleases | Sort-Object -Property released_at -Descending | Select-Object -First 1
+            }
+            else {
+                $glReleases
+            }
+
+            if ($glLatest -and $glLatest.tag_name) {
+                $candidates += [pscustomobject]@{
+                    Version = ($glLatest.tag_name -replace '^v', '')
+                    Tag     = $glLatest.tag_name
+                    Body    = $glLatest.description
+                    Url     = "https://gitlab.com/CodeWriter21/UT-Internet/-/releases/$($glLatest.tag_name)"
+                }
+            }
         }
-        else {
-            $response
+        catch {
+            $errors += "GitLab: $($_.Exception.Message)"
         }
 
-        if (-not $latest -or -not $latest.tag_name) {
+        # Fallback source: GitHub Releases
+        try {
+            $ghLatest = Invoke-RestMethod -Uri "https://api.github.com/repos/MPCodeWriter21/UT-Internet/releases/latest" -Method Get -ErrorAction Stop -TimeoutSec 5
+
+            if ($ghLatest -and $ghLatest.tag_name) {
+                $candidates += [pscustomobject]@{
+                    Version = ($ghLatest.tag_name -replace '^v', '')
+                    Tag     = $ghLatest.tag_name
+                    Body    = $ghLatest.body
+                    Url     = "https://github.com/MPCodeWriter21/UT-Internet/releases/tag/$($ghLatest.tag_name)"
+                }
+            }
+        }
+        catch {
+            $errors += "GitHub: $($_.Exception.Message)"
+        }
+
+        if ($candidates.Count -eq 0) {
+            Write-Host -ForegroundColor DarkGray " [i] Could not check for updates: $($errors -join ' | ')"
             return
         }
 
-        $latestVersion = $latest.tag_name -replace '^v', ''
+        # Use the newest version found across sources
+        $latest = $candidates[0]
+        foreach ($candidate in $candidates) {
+            if ((Compare-SemanticVersion -version1 $candidate.Version -version2 $latest.Version) -gt 0) {
+                $latest = $candidate
+            }
+        }
+
+        $latestVersion = $latest.Version
         $currentVersionClean = $currentVersion -replace '^v', ''
-        $downloadUrl = "https://gitlab.com/CodeWriter21/UT-Internet/-/releases/$($latest.tag_name)"
+        $downloadUrl = $latest.Url
 
         # Compare versions: -1 if current < latest, 0 if equal, 1 if current > latest
         $comparison = Compare-SemanticVersion -version1 $currentVersionClean -version2 $latestVersion
@@ -843,7 +885,7 @@ function Check-Updates {
             Write-Host -ForegroundColor Yellow "|"
             Write-Host -ForegroundColor Yellow "  ============================================================================ "
 
-            $releaseBody = $latest.description
+            $releaseBody = $latest.Body
             if ($releaseBody) {
                 # Extract content between "### 📝 What's Changed" and "### ⚙️ Features"
                 $bodyLines = $releaseBody -split "`n"

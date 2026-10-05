@@ -2,7 +2,7 @@
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.3-orange.svg)](https://gitlab.com/CodeWriter21/UT-Internet)
+[![Version](https://img.shields.io/badge/Version-1.4.4-orange.svg)](https://gitlab.com/CodeWriter21/UT-Internet)
 [![Pipeline](https://gitlab.com/CodeWriter21/UT-Internet/badges/master/pipeline.svg)](https://gitlab.com/CodeWriter21/UT-Internet/-/pipelines)
 [![Release](https://img.shields.io/gitlab/v/release/CodeWriter21%2FUT-Internet?label=Latest%20Release)](https://gitlab.com/CodeWriter21/UT-Internet/-/releases)
 
@@ -21,7 +21,7 @@ credential management, session control, and traffic monitoring.
 - 📊 **Traffic Monitoring**: View your remaining internet traffic quota
 - 🔌 **Multi-Session Handling**: Disconnect other active sessions when needed
 - 🤖 **Automatic CAPTCHA Solving**: Uses Tesseract OCR to automatically solve CAPTCHAs
-- 🔔 **Automatic Update Check**: Notifies you when a new version is available on GitLab
+- 🔔 **Automatic Update Check**: Notifies you when a new version is available on GitLab or GitHub
 - 🎨 **Colorful Interface**: Beautiful, color-coded output for better readability
 - ⚙️ **Flexible Options**: Multiple command-line flags for customized behavior
 
@@ -132,7 +132,7 @@ credentials are saved securely for future use.
 | `-chooseDefault`      | Set or unset the default account                             |
 | `-chooseAccount`      | Select an account for this session (keeps default unchanged) |
 | `-noRemainingTraffic` | Skip displaying remaining traffic quota                      |
-| `-noUpdateCheck`      | Skip checking for updates on GitLab                          |
+| `-noUpdateCheck`      | Skip checking for updates                          |
 | `-help`               | Display help message with usage information                  |
 | `-version`            | Display script version                                       |
 
@@ -178,9 +178,9 @@ View your remaining internet quota in human-readable format:
 
 ### 5. **Automatic Update Check**
 
-After successful login, the script automatically checks GitLab for new releases:
+After successful login, the script automatically checks GitLab for new releases (falling back to GitHub if unreachable):
 
-- Compares your version with the latest release on GitLab
+- Compares your version with the latest release on GitLab or GitHub
 - Displays a notification box if an update is available
 - Shows current version, latest version, and download link
 - Includes brief release notes preview
@@ -418,7 +418,15 @@ If this script helped you, please consider:
 
 ## Changelog
 
-### Version 1.4.3 (Latest)
+### Version 1.4.4 (Latest)
+
+**Dual-Hosted Releases with Update Fallback**
+
+- **GitHub remote restored** - `MPCodeWriter21/UT-Internet` is kept in sync with GitLab; releases are published on both
+- **Tag-triggered GitHub workflow** - Pushing a `v*` tag builds artifacts and creates the GitHub Release (mirrors the GitLab pipeline)
+- **Update checker fallback** - Checks GitLab Releases first, falls back to GitHub Releases if unreachable, and notifies about the newest version found on either
+
+### Version 1.4.3
 
 **New Login Address Support**
 

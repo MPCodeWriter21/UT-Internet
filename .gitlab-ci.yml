@@ -120,7 +120,7 @@ create-release:
       - 🔄 Automatic session detection
       - 👥 Multi-account support - manage multiple UT accounts
       - 🎯 Flexible default account - set to "None" for account selection prompt each time
-      - 🔔 Automatic update check - notifies when new version is available on GitLab
+      - 🔔 Automatic update check - notifies when new version is available on GitLab or GitHub
       - 🚪 Easy logout functionality
       - 📊 Traffic quota monitoring
       - 🔌 Multi-session disconnect capability
@@ -135,7 +135,7 @@ create-release:
       | `-chooseDefault` | Set default account (or "None" to prompt each time) |
       | `-chooseAccount` | Choose account for this session |
       | `-noRemainingTraffic` | Skip traffic display |
-      | `-noUpdateCheck` | Skip checking for updates on GitLab |
+      | `-noUpdateCheck` | Skip checking for updates |
       | `-help` | Show help message |
       | `-version` | Show version |
 
