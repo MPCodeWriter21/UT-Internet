@@ -1,4 +1,5 @@
 stages:
+  - validate
   - release
 
 variables:
@@ -12,6 +13,43 @@ variables:
 # The pipeline runs on the tag, verifies it matches the script version,
 # then builds artifacts and creates the GitLab Release. No push-back
 # from CI is needed, so no extra tokens are required.
+
+# Fast feedback on branch pushes (the pipeline badge tracks the master ref,
+# so this keeps it meaningful now that releases run on tags).
+# Catches PowerShell syntax errors before a release is tagged.
+validate-script:
+  stage: validate
+  image: mcr.microsoft.com/powershell:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - |
+      set -e
+      cat > validate.ps1 << 'PSEOF'
+      $errs = $null
+      $toks = $null
+      [void][System.Management.Automation.Language.Parser]::ParseFile('login-to-internet.ps1', [ref]$toks, [ref]$errs)
+      if ($errs.Count -gt 0) {
+        $errs | ForEach-Object { Write-Output $_.Message }
+        exit 1
+      }
+      Write-Output 'PowerShell syntax OK'
+      PSEOF
+      pwsh -NoProfile -File validate.ps1
+    - |
+      set -e
+      VERSION=$(sed -n 's/.*\$currentVersion *= *"\([^"]*\)".*/\1/p' login-to-internet.ps1 | head -n1)
+      if [ -z "$VERSION" ]; then
+        echo "ERROR: Could not extract \$currentVersion from login-to-internet.ps1"
+        exit 1
+      fi
+      echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
+        echo "ERROR: \$currentVersion '$VERSION' is not X.Y.Z"
+        exit 1
+      }
+      echo "Version format OK: $VERSION"
 
 create-release:
   stage: release
